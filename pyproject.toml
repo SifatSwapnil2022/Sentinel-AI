@@ -1,0 +1,102 @@
+[project]
+name = "sentinel-workspace"
+version = "0.0.0"
+description = "Workspace root for Sentinel. Not published."
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["core"]
+
+[tool.uv.sources]
+sentinel-core = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "sentinel-core",
+    "pytest>=8.3",
+    "pytest-cov>=5.0",
+    "hypothesis>=6.112",
+    "ruff>=0.8",
+    "mypy>=1.13",
+    "pandas-stubs>=2.2",
+    "scipy-stubs>=1.14",
+]
+
+# ---------------------------------------------------------------- ruff
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["core/src", "core/tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F",   # pycodestyle, pyflakes
+    "I",             # isort
+    "B",             # bugbear
+    "UP",            # pyupgrade
+    "SIM",           # simplify
+    "RUF",           # ruff-specific
+    "N",             # naming
+    "C4",            # comprehensions
+    "PT",            # pytest style
+    "NPY",           # numpy-specific
+    "PD",            # pandas-vet
+    "PERF",          # performance anti-patterns
+    "D",             # docstrings
+]
+ignore = [
+    "D105", "D107",  # magic methods and __init__ documented on the class
+    "PD011",         # flags every `.values`, including our own dataclass fields
+    "N803", "N806",  # maths notation (X, TP, FP) is clearer than snake_case here
+]
+
+# Slice labels deliberately use typographic characters ("25k – 50k", "≥ 75k", "a · b").
+allowed-confusables = ["–", "−", "≥", "·"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"core/tests/**" = ["D", "PLR2004", "N802"]
+
+# ---------------------------------------------------------------- mypy
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unreachable = true
+mypy_path = "core/src"
+files = ["core/src"]
+
+[[tool.mypy.overrides]]
+module = ["sklearn.*"]
+ignore_missing_imports = true
+
+# ---------------------------------------------------------------- pytest
+[tool.pytest.ini_options]
+testpaths = ["core/tests"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "-p", "no:cacheprovider",
+    "--import-mode=importlib",
+]
+markers = [
+    "parity: compares results with Evidently / NannyML (needs the parity extras)",
+    "slow: long-running statistical tests",
+]
+filterwarnings = ["error", "ignore::DeprecationWarning:pandas.*"]
+
+[tool.coverage.run]
+source = ["sentinel_core"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 90
+exclude_also = ["if TYPE_CHECKING:", "raise NotImplementedError", "@overload"]
