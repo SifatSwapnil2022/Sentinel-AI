@@ -1,0 +1,25 @@
+.loading {
+  min-height: 40vh;
+  color: var(--graphite);
+}
+
+.message {
+  max-width: 60ch;
+  display: grid;
+  gap: var(--space-3);
+  padding-top: var(--space-6);
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+}
+
+.actions button {
+  padding: 6px var(--space-4);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-control);
+  background: var(--sheet);
+  cursor: pointer;
+}

@@ -1,0 +1,27 @@
+.frame svg {
+  display: block;
+  overflow: visible;
+}
+
+.grid {
+  stroke: var(--hairline);
+}
+
+.baseline {
+  stroke: var(--hairline-strong);
+}
+
+.label {
+  fill: var(--graphite);
+  font-family: var(--font-data);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.reference {
+  fill: var(--hairline-strong);
+}
+
+.current {
+  fill: var(--estimate);
+}

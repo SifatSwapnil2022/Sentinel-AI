@@ -1,0 +1,169 @@
+/* Shared page structure. Pages are documents: a header, a lead, then sections. */
+
+.page {
+  max-width: var(--content-max);
+  display: grid;
+  gap: var(--space-7);
+}
+
+.page > *,
+.header > *,
+.section > * {
+  min-width: 0;
+}
+
+.header {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--graphite);
+}
+
+.crumbs a {
+  color: inherit;
+}
+
+.titleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3) var(--space-4);
+}
+
+.title {
+  font-family: var(--font-data);
+  font-weight: 600;
+}
+
+.version {
+  font-family: var(--font-data);
+  font-size: var(--text-lg);
+  color: var(--graphite);
+}
+
+.lead {
+  max-width: 68ch;
+  font-size: var(--text-lg);
+  line-height: 1.5;
+}
+
+.meta {
+  max-width: 68ch;
+  color: var(--graphite);
+}
+
+.section {
+  display: grid;
+  gap: var(--space-4);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--hairline);
+}
+
+.sectionHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-5);
+}
+
+.sectionNote {
+  max-width: 68ch;
+  color: var(--graphite);
+  font-size: var(--text-sm);
+}
+
+.tabs {
+  display: flex;
+  gap: var(--space-1);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.tab {
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  color: var(--graphite);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.tab:hover {
+  color: var(--ink);
+}
+
+.tab[aria-current="page"] {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+
+/* Data tables: hairline rows, no zebra, numbers right-aligned in the data face. */
+
+.tableWrap {
+  position: relative; /* contains visually-hidden labels, which are absolutely positioned */
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  font-size: var(--text-md);
+}
+
+.table th {
+  text-align: left;
+  font-weight: 500;
+  font-size: var(--text-sm);
+  color: var(--graphite);
+  padding: var(--space-2) var(--space-3) var(--space-2) 0;
+  border-bottom: 1px solid var(--hairline-strong);
+  vertical-align: bottom;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: var(--space-3) var(--space-3) var(--space-3) 0;
+  border-bottom: 1px solid var(--hairline);
+  vertical-align: middle;
+}
+
+.table .num {
+  text-align: right;
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.table th.num {
+  font-family: var(--font-ui);
+}
+
+.data {
+  font-family: var(--font-data);
+}
+
+.quiet {
+  color: var(--graphite);
+}
+
+.details summary {
+  cursor: pointer;
+  color: var(--graphite);
+  font-size: var(--text-sm);
+  width: fit-content;
+}
+
+.details[open] summary {
+  margin-bottom: var(--space-3);
+}
+
+@media (max-width: 900px) {
+  .page {
+    gap: var(--space-6);
+  }
+}

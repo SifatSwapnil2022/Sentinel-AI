@@ -1,0 +1,31 @@
+.glyph {
+  display: block;
+  overflow: visible;
+}
+
+.track {
+  stroke: var(--hairline);
+  stroke-width: 1;
+}
+
+.reference {
+  stroke: var(--ink);
+  stroke-width: 1.5;
+  opacity: 0.75;
+}
+
+.band {
+  fill: var(--estimate-band-strong);
+}
+
+.tick {
+  stroke: var(--estimate);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.ring {
+  fill: var(--sheet);
+  stroke: var(--ink);
+  stroke-width: 2;
+}

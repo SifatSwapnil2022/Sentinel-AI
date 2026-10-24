@@ -1,0 +1,36 @@
+.frame svg {
+  display: block;
+  overflow: visible;
+}
+
+.label {
+  fill: var(--ink);
+  font-size: 14px;
+}
+
+.value {
+  fill: var(--ink);
+  font-family: var(--font-data);
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.total {
+  fill: var(--hairline-strong);
+}
+
+.delta {
+  fill: var(--ink);
+}
+
+.connector {
+  stroke: var(--graphite);
+  stroke-width: 1;
+}
+
+@media (max-width: 640px) {
+  .label {
+    font-size: 12.5px;
+  }
+}

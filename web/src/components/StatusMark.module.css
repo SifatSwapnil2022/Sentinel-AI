@@ -1,0 +1,29 @@
+.mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.shape {
+  flex: none;
+}
+
+.mark[data-status="healthy"] .shape {
+  fill: var(--good);
+}
+
+.mark[data-status="warning"] .shape {
+  fill: var(--warning);
+  stroke: var(--on-warning);
+  stroke-width: 0.8;
+  stroke-linejoin: round;
+}
+
+.mark[data-status="critical"] .shape {
+  fill: var(--critical);
+}
+
+.word {
+  font-weight: 500;
+}

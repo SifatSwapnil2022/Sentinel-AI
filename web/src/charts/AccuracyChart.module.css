@@ -1,0 +1,167 @@
+.figure {
+  margin: 0;
+}
+
+.frame {
+  position: relative;
+  width: 100%;
+  background: var(--sheet);
+  border: 1px solid var(--hairline);
+  padding: var(--space-4) 0 var(--space-2);
+}
+
+.frame:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.svg {
+  display: block;
+  overflow: visible;
+}
+
+.grid {
+  stroke: var(--hairline);
+  stroke-width: 1;
+}
+
+.baseline {
+  stroke: var(--hairline-strong);
+  stroke-width: 1;
+}
+
+.yLabel,
+.xLabel,
+.refLabel {
+  fill: var(--graphite);
+  font-family: var(--font-data);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.refLabel {
+  font-size: 12.5px;
+}
+
+.reference {
+  stroke: var(--graphite);
+  stroke-width: 1;
+}
+
+.band {
+  fill: var(--estimate-band);
+  animation: reveal 900ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.line {
+  fill: none;
+  stroke: var(--estimate);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  animation: reveal 900ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes reveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.ring {
+  fill: var(--sheet);
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+
+.coverage {
+  fill: var(--graphite);
+  opacity: 0.45;
+}
+
+.crosshair {
+  stroke: var(--ink);
+  stroke-width: 1;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.hit {
+  fill: transparent;
+  cursor: crosshair;
+}
+
+.stripLabel {
+  position: absolute;
+  font-size: var(--text-xs);
+  color: var(--graphite);
+  pointer-events: none;
+}
+
+.readout {
+  position: absolute;
+  top: var(--space-4);
+  z-index: 2;
+  min-width: 210px;
+  padding: var(--space-3);
+  background: var(--sheet);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-control);
+  box-shadow: 0 6px 18px rgb(22 34 46 / 0.12);
+  pointer-events: none;
+  font-size: var(--text-sm);
+}
+
+.readoutDate {
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+}
+
+.readout dl {
+  margin: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.readout dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--graphite);
+}
+
+.readout dd {
+  margin: 0;
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+}
+
+.readout dd strong {
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.readout dd span {
+  color: var(--graphite);
+}
+
+.keyLine {
+  width: 14px;
+  height: 2px;
+  background: var(--estimate);
+  border-radius: 1px;
+}
+
+.keyRing {
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+}
+

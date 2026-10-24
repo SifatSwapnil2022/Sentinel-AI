@@ -1,0 +1,86 @@
+/* Design tokens. Values and rationale: web/DESIGN.md. */
+
+:root {
+  color-scheme: light;
+
+  --field: #e9edea;
+  --sheet: #f8faf8;
+  --ink: #16222e;
+  --graphite: #566370;
+  --hairline: #d3dad5;
+  --hairline-strong: #b9c3bc;
+  --wash: rgb(22 34 46 / 0.045);
+
+  --estimate: #2a78d6;
+  --estimate-band: rgb(42 120 214 / 0.16);
+  --estimate-band-strong: rgb(42 120 214 / 0.28);
+
+  --good: #0ca30c;
+  --warning: #fab219;
+  --critical: #d03b3b;
+  --good-text: #006300;
+  --critical-text: #b22a2a;
+  --on-warning: #16222e;
+
+  --focus: #2a78d6;
+
+  --font-ui: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "Barlow Semi Condensed", "Barlow", system-ui, sans-serif;
+
+  --text-xs: 0.78125rem; /* 12.5px */
+  --text-sm: 0.84375rem; /* 13.5px */
+  --text-md: 0.9375rem; /* 15px */
+  --text-lg: 1.125rem; /* 18px */
+  --text-xl: 1.375rem; /* 22px */
+  --text-2xl: 1.75rem; /* 28px */
+  --text-reading: 3rem; /* 48px: one per page */
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  --radius-control: 6px;
+  --content-max: 1180px;
+  --sidebar: 236px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --field: #11171c;
+    --sheet: #182027;
+    --ink: #e3e9ee;
+    --graphite: #9aa7b2;
+    --hairline: #26313a;
+    --hairline-strong: #36434e;
+    --wash: rgb(227 233 238 / 0.05);
+    --estimate: #3987e5;
+    --estimate-band: rgb(57 135 229 / 0.22);
+    --estimate-band-strong: rgb(57 135 229 / 0.36);
+    --good-text: #0ca30c;
+    --critical-text: #e66767;
+    --focus: #6aa6ee;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --field: #11171c;
+  --sheet: #182027;
+  --ink: #e3e9ee;
+  --graphite: #9aa7b2;
+  --hairline: #26313a;
+  --hairline-strong: #36434e;
+  --wash: rgb(227 233 238 / 0.05);
+  --estimate: #3987e5;
+  --estimate-band: rgb(57 135 229 / 0.22);
+  --estimate-band-strong: rgb(57 135 229 / 0.36);
+  --good-text: #0ca30c;
+  --critical-text: #e66767;
+  --focus: #6aa6ee;
+}
