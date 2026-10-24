@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install fmt lint typecheck test cov parity check clean
+.PHONY: help install fmt lint typecheck test cov parity check fixtures clean
 
 PARITY_ENV := .parity
 
@@ -10,12 +10,12 @@ install: ## Install the workspace and dev tools
 	uv sync
 
 fmt: ## Format code
-	uv run ruff format core
-	uv run ruff check --fix core
+	uv run ruff format core demo
+	uv run ruff check --fix core demo
 
 lint: ## Lint without changing files
-	uv run ruff format --check core
-	uv run ruff check core
+	uv run ruff format --check core demo
+	uv run ruff check core demo
 
 typecheck: ## Strict mypy on the library
 	uv run mypy
@@ -31,6 +31,9 @@ parity: ## Compare against Evidently and NannyML in a separate environment
 	uv pip install --python $(PARITY_ENV) -e ./core pytest hypothesis evidently nannyml "pandas<3"
 	NML_DISABLE_USAGE_LOGGING=1 $(PARITY_ENV)/bin/python -m pytest core/tests/parity \
 		-p no:cacheprovider --import-mode=importlib
+
+fixtures: ## Rebuild the dashboard demo data from the engine
+	uv run python demo/build_fixtures.py --out web/public/data
 
 check: lint typecheck cov ## Everything CI runs except parity
 

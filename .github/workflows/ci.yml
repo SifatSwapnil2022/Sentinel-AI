@@ -22,8 +22,8 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --locked
-      - run: uv run ruff format --check core
-      - run: uv run ruff check core
+      - run: uv run ruff format --check core demo
+      - run: uv run ruff check core demo
       - run: uv run mypy
 
   test:
