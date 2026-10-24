@@ -11,17 +11,42 @@ they relate to each other, and points to the segment of traffic behind a drop.
 
 ## Status
 
-I'm building this in steps. Step 1, the statistics engine (`core/`), is done and tested.
-The API, workers and dashboard come next.
+I'm building this in steps.
 
 | Step | Scope | State |
 | --- | --- | --- |
 | 1 | `sentinel_core`: drift, performance estimation, slice root cause | Done |
-| 2 | Ingestion and query API, storage, background workers | Next |
-| 3 | Dashboard | Planned |
+| 2 | Dashboard, on demo traffic run through the engine | Done |
+| 3 | Ingestion and query API, storage, background workers | Next |
 | 4 | OpenTelemetry ingestion and LLM evaluation | Planned |
 
-## What step 1 does
+![Overview: every model's estimated accuracy and its likely range, against the accuracy it had at release](docs/images/overview.png)
+
+## The dashboard
+
+Each model's estimate is drawn as a band (its likely range) with a tick, measured accuracy as a
+hollow ring once labels arrive, and the model's accuracy at release as a rule. On the overview
+that becomes a forest plot: a model whose band sits left of its rule needs a look, before a
+single label has come back.
+
+The demo runs four synthetic models through the real engine, each with a different failure:
+
+| Model | What happens | What Sentinel shows |
+| --- | --- | --- |
+| credit-risk | Defaults rise for lower-income applicants in one division; inputs look normal | Measured accuracy leaves the estimate's range; root cause names the division |
+| fraud-screen | Festival traffic: larger payments, more digital goods; labels take 45 days | Estimated accuracy drops before any labels; no single segment to blame, and the traffic shift behind it |
+| claims-triage | A new form decouples claim amount from policy value | Feature relationships change while every feature looks normal |
+| churn-predictor | Nothing | Healthy |
+
+<img src="docs/images/incident.png" alt="Incident page for credit-risk: a one-sentence summary, the signals that fired, a bridge chart splitting the drop, and the ranked segments" width="100%">
+
+Built with React, TypeScript (strict), hand-drawn SVG charts on d3 scales, and runtime schema
+validation on every payload. Light and dark themes, keyboard-readable charts, a table view behind
+every chart, and phone layouts. Design notes: [`web/DESIGN.md`](web/DESIGN.md).
+
+<img src="docs/images/model-dark.png" alt="Accuracy chart in dark mode: estimate band, measured rings, reference line and label coverage" width="100%">
+
+## What the engine does
 
 **Per-feature drift.** The method is chosen by column type and sample size, following
 Evidently's documented defaults: KS / chi-square / Z-test up to 1,000 reference rows,
@@ -70,18 +95,28 @@ realized  0.842
   drift.
 - **Statistical tests**: the 3-sigma accuracy band covers the realized value in at least 97% of
   300 simulated windows; the multivariate detector raises at most 2 false alarms in 40 clean
-  windows.
-- **Mutation spot-checks**: planting a wrong formula in each module fails the suite.
-- Strict mypy, ruff, branch coverage above 95%, CI on Python 3.11–3.13.
+  windows; the calibration noise floor matches simulation within 15%.
+- **Realistic traffic.** Running the demo scenarios through the engine exposed three problems the
+  unit tests had not, each now fixed and tested ([ADR 5](docs/adr/0005-calibration-and-concept-band.md)).
+- **Dashboard**: 55 unit and component tests, a contract test that every generated JSON file
+  passes the dashboard's schemas, and 53 Playwright tests on desktop and phone covering the main
+  journeys, keyboard access to charts, no sideways scrolling, and zero serious axe accessibility
+  violations in light and dark mode.
+- Strict mypy and TypeScript, ruff and ESLint, CI on Python 3.11–3.13 and Node 22.
 
 ## Run it
 
-Requires [uv](https://docs.astral.sh/uv/).
+Requires [uv](https://docs.astral.sh/uv/) and Node 22.
 
 ```bash
-make install    # create the environment
-make check      # lint, types, tests with coverage
-make parity     # compare with Evidently and NannyML (separate environment)
+make install            # Python environment
+make check              # lint, types, tests with coverage
+make parity             # compare with Evidently and NannyML (separate environment)
+make fixtures           # regenerate the dashboard's demo data from the engine
+
+cd web && npm ci
+npm run dev             # dashboard at http://localhost:5173
+npm run check && npm run e2e
 ```
 
 ## Design decisions
