@@ -1,6 +1,10 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { mockData, renderRoute } from "../test/render";
+import { fleetSchema, incidentSchema, modelSchema } from "../data/schema";
+import { percent, percentRange } from "../lib/format";
+import { fixture, mockData, renderRoute } from "../test/render";
+
+const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -23,8 +27,12 @@ describe("overview", () => {
   it("describes every forest-plot glyph for screen readers", async () => {
     mockData();
     renderRoute("/");
-    const glyph = await screen.findByRole("img", { name: /^fraud-screen: estimated 79\.1%/ });
-    expect(glyph).toHaveAccessibleName(/reference 88\.7%/);
+    const fraud = fleetSchema.parse(fixture("fleet.json")).models.find((m) => m.id === "fraud-screen");
+    if (!fraud) throw new Error("fixture has no fraud-screen");
+    const glyph = await screen.findByRole("img", {
+      name: new RegExp(`^fraud-screen: estimated ${escape(percent(fraud.estimate.value))}`),
+    });
+    expect(glyph).toHaveAccessibleName(new RegExp(`reference ${escape(percent(fraud.referenceAccuracy))}`));
   });
 });
 
@@ -34,7 +42,9 @@ describe("model page", () => {
     renderRoute("/models/credit-risk");
     expect(await screen.findByRole("heading", { level: 1, name: "credit-risk" })).toBeInTheDocument();
     expect(screen.getByText("Estimated accuracy, Oct 24")).toBeInTheDocument();
-    expect(screen.getByText(/^Likely 73\.7 to 79\.8%$/)).toBeInTheDocument();
+    const latest = modelSchema.parse(fixture("models/credit-risk.json")).days.at(-1)?.estimate.accuracy;
+    if (!latest) throw new Error("fixture has no days");
+    expect(screen.getByText(`Likely ${percentRange(latest.lower, latest.upper)}`)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("radio", { name: "Recall" }));
     expect(screen.getByText("Estimated recall, Oct 24")).toBeInTheDocument();
@@ -93,7 +103,10 @@ describe("incident page", () => {
     mockData();
     renderRoute("/incidents/fraud-screen-1");
     expect(await screen.findByText(/^No segment stands out/)).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "25% to 52%" })).toBeInTheDocument();
+    const [shift] = incidentSchema.parse(fixture("alerts/fraud-screen-1.json")).mixShifts;
+    if (!shift) throw new Error("fixture has no mix shifts");
+    const name = `${percent(shift.reference, 0)} to ${percent(shift.current, 0)}`;
+    expect(screen.getAllByRole("img", { name })[0]).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Example predictions" })).not.toBeInTheDocument();
   });
 

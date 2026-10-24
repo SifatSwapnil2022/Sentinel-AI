@@ -1,6 +1,7 @@
 import { incidentSchema } from "../data/schema";
 import { fixture } from "../test/render";
 import { conditionText, fleetSentence, summarize } from "./describe";
+import { percent, shortDate } from "./format";
 
 const incident = (id: string) => incidentSchema.parse(fixture(`alerts/${id}.json`));
 
@@ -18,21 +19,34 @@ describe("conditionText", () => {
 
 describe("summarize", () => {
   it("names the segment for a concentrated drop", () => {
-    const text = summarize(incident("credit-risk-1"));
-    expect(text).toMatch(/^Measured accuracy on labelled predictions since Oct 18/);
+    const credit = incident("credit-risk-1");
+    const text = summarize(credit);
+    expect(text).toMatch(
+      new RegExp(`^Measured accuracy on labelled predictions since ${shortDate(credit.window.from)} `),
+    );
     expect(text).toContain("concentrated where division = Khulna");
   });
 
   it("says a broad drop is broad and names the biggest traffic shift", () => {
-    const text = summarize(incident("fraud-screen-1"));
+    const fraud = incident("fraud-screen-1");
+    const text = summarize(fraud);
     expect(text).toContain("No single segment explains it");
-    expect(text).toContain("amount_bdt ≥ 3.44k went from 25% to 52%");
+    const [shift] = fraud.mixShifts;
+    if (!shift) throw new Error("fixture has no mix shifts");
+    expect(shift.feature).toBe("amount_bdt");
+    expect(text).toContain(
+      `${conditionText(shift.feature, shift.value)} went from ${percent(shift.reference, 0)} to ${percent(shift.current, 0)}`,
+    );
   });
 
   it("describes changed relationships for multivariate incidents", () => {
-    const text = summarize(incident("claims-triage-1"));
+    const claims = incident("claims-triage-1");
+    const text = summarize(claims);
     expect(text).toMatch(/link between policy_value_bdt and claim_amount_bdt changed/);
-    expect(text).toContain("0.86 to 0.64");
+    const [pair] = claims.correlationChanges;
+    if (!pair) throw new Error("fixture has no correlation changes");
+    expect(pair.reference - pair.current).toBeGreaterThan(0.3); // the scenario breaks the link
+    expect(text).toContain(`${pair.reference.toFixed(2)} to ${pair.current.toFixed(2)}`);
   });
 
   it("falls back cleanly when there is nothing else to say", () => {

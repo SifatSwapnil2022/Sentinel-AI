@@ -12,6 +12,12 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import pandas as pd
+from sklearn.compose import ColumnTransformer
+from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OrdinalEncoder
+
+from sentinel_server.analysis import Monitors
 
 Frame = pd.DataFrame
 Rng = np.random.Generator
@@ -45,6 +51,8 @@ class ModelSpec:
     """Real log-odds of the positive outcome; may depend on scenario intensity."""
     scenario: Scenario
     categorical: tuple[str, ...] = field(default_factory=tuple)
+    latency_ms: float = 38.0
+    """Typical (median) serving latency."""
 
 
 def _sigmoid(x: np.ndarray) -> np.ndarray:
@@ -212,6 +220,7 @@ MODELS: tuple[ModelSpec, ...] = (
         features=_fraud_features,
         true_logit=_fraud_logit,
         categorical=("merchant_category", "is_international"),
+        latency_ms=61.0,
         scenario=Scenario(
             kind="covariate_shift",
             start_day=17,
@@ -263,3 +272,61 @@ def sample(spec: ModelSpec, rng: Rng, n: int, level: float) -> tuple[Frame, np.n
     frame = spec.features(rng, n, level)
     outcome = rng.random(n) < _sigmoid(spec.true_logit(frame, level))
     return frame, outcome.astype(np.int64)
+
+
+# ---------------------------------------------------------------------------- the deployed model
+
+TRAIN_ROWS = 8_000
+
+
+@dataclass(eq=False)
+class TrainedModel:
+    """The 'deployed' model, trained once on clean data, plus monitors fitted on a reference."""
+
+    spec: ModelSpec
+    pipeline: Pipeline
+    monitors: Monitors
+    reference: Frame
+    """Reference rows as uploaded to Sentinel: features, ``score`` and ``label``."""
+
+    def predict(self, frame: Frame) -> np.ndarray:
+        """Positive-class probability for each row."""
+        return _predict(self.pipeline, self.spec, frame)
+
+
+def _predict(pipeline: Pipeline, spec: ModelSpec, frame: Frame) -> np.ndarray:
+    prepared = frame.astype(dict.fromkeys(spec.categorical, str))
+    return np.asarray(pipeline.predict_proba(prepared)[:, 1], dtype=np.float64)
+
+
+def train(spec: ModelSpec, rng: Rng, *, reference_rows: int = 6_000) -> TrainedModel:
+    """Train on clean data, then score a held-out reference and fit Sentinel's monitors on it."""
+    x_train, y_train = sample(spec, rng, TRAIN_ROWS, 0.0)
+    categorical = list(spec.categorical)
+    encoder = ColumnTransformer(
+        [
+            (
+                "cat",
+                OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1),
+                categorical,
+            )
+        ],
+        remainder="passthrough",
+    )
+    gbm = HistGradientBoostingClassifier(
+        max_iter=150,
+        learning_rate=0.08,
+        categorical_features=list(range(len(categorical))),
+        random_state=0,
+    )
+    pipeline = Pipeline([("encode", encoder), ("gbm", gbm)])
+    pipeline.fit(x_train.astype(dict.fromkeys(categorical, str)), y_train)
+
+    ref_frame, ref_outcome = sample(spec, rng, reference_rows, 0.0)
+    score = _predict(pipeline, spec, ref_frame)
+    return TrainedModel(
+        spec=spec,
+        pipeline=pipeline,
+        monitors=Monitors.fit(ref_frame, ref_outcome, score),
+        reference=ref_frame.assign(score=score, label=ref_outcome),
+    )

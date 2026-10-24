@@ -1,5 +1,16 @@
+import { readFileSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+
+/** The latest estimate's range for a model, as the page prints it ("Likely 73.7 to 79.8%"). */
+function likelyRange(modelId: string): string {
+  const doc = JSON.parse(readFileSync(`public/data/models/${modelId}.json`, "utf8")) as {
+    days: { estimate: { accuracy: { lower: number; upper: number } } }[];
+  };
+  const latest = doc.days.at(-1)?.estimate.accuracy;
+  if (!latest) throw new Error(`no days for ${modelId}`);
+  return `Likely ${(latest.lower * 100).toFixed(1)} to ${(latest.upper * 100).toFixed(1)}%`;
+}
 
 const PAGES = [
   ["overview", "/"],
@@ -46,7 +57,7 @@ test("an engineer follows an alert from the overview to its cause", async ({ pag
   if (isMobile) await page.getByRole("button", { name: "Menu" }).click();
   await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: /credit-risk/ }).click();
   await expect(page.getByRole("heading", { level: 1, name: "credit-risk" })).toBeVisible();
-  await expect(page.getByText("Likely 73.7 to 79.8%", { exact: true })).toBeVisible();
+  await expect(page.getByText(likelyRange("credit-risk"), { exact: true })).toBeVisible();
 
   await page.getByRole("link", { name: "Measured accuracy fell outside the estimate" }).click();
   await expect(page).toHaveURL(/\/incidents\/credit-risk-1$/);

@@ -2,8 +2,43 @@ import { useQuery } from "@tanstack/react-query";
 import type { z } from "zod";
 import { fleetSchema, incidentSchema, modelSchema } from "./schema";
 
-/** Base URL for data. Static demo JSON today; the step-3 API will serve the same shapes. */
-const BASE = `${import.meta.env.BASE_URL}data`;
+/**
+ * Where documents come from. Both sources serve identical shapes (the server's parity test
+ * holds them to it): the static demo JSON shipped with the app, or a live Sentinel API when
+ * `VITE_SENTINEL_API` is set at build time ("/" for the same origin, or a full URL).
+ */
+export interface DataSource {
+  live: boolean;
+  fleet: string;
+  model: (id: string) => string;
+  incident: (id: string) => string;
+}
+
+export function dataSource(api: string | undefined, base: string): DataSource {
+  if (api !== undefined && api !== "") {
+    const root = api.replace(/\/+$/, "");
+    return {
+      live: true,
+      fleet: `${root}/v1/fleet`,
+      model: (id) => `${root}/v1/models/${encodeURIComponent(id)}`,
+      incident: (id) => `${root}/v1/incidents/${encodeURIComponent(id)}`,
+    };
+  }
+  const root = `${base}data`;
+  return {
+    live: false,
+    fleet: `${root}/fleet.json`,
+    model: (id) => `${root}/models/${encodeURIComponent(id)}.json`,
+    incident: (id) => `${root}/alerts/${encodeURIComponent(id)}.json`,
+  };
+}
+
+export const source = dataSource(import.meta.env.VITE_SENTINEL_API, import.meta.env.BASE_URL);
+
+/** Live data refreshes in the background; the static demo never changes. */
+const freshness = source.live
+  ? { staleTime: 15_000, refetchInterval: 60_000 }
+  : { staleTime: Number.POSITIVE_INFINITY };
 
 export class DataError extends Error {
   constructor(
@@ -49,22 +84,22 @@ const retry = (count: number, error: Error) =>
 
 export const fleetQuery = () => ({
   queryKey: ["fleet"] as const,
-  queryFn: () => fetchValidated(`${BASE}/fleet.json`, fleetSchema),
-  staleTime: 60_000,
+  queryFn: () => fetchValidated(source.fleet, fleetSchema),
+  ...freshness,
   retry,
 });
 
 export const modelQuery = (id: string) => ({
   queryKey: ["model", id] as const,
-  queryFn: () => fetchValidated(`${BASE}/models/${encodeURIComponent(id)}.json`, modelSchema),
-  staleTime: 60_000,
+  queryFn: () => fetchValidated(source.model(id), modelSchema),
+  ...freshness,
   retry,
 });
 
 export const incidentQuery = (id: string) => ({
   queryKey: ["incident", id] as const,
-  queryFn: () => fetchValidated(`${BASE}/alerts/${encodeURIComponent(id)}.json`, incidentSchema),
-  staleTime: 60_000,
+  queryFn: () => fetchValidated(source.incident(id), incidentSchema),
+  ...freshness,
   retry,
 });
 
