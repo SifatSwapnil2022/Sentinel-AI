@@ -1,7 +1,9 @@
 """Performance estimation without labels, and realized metrics once labels arrive."""
 
 from sentinel_core.performance.calibration import (
+    CalibrationRule,
     Calibrator,
+    ece_noise_floor,
     expected_calibration_error,
     fit_calibrator,
     needs_calibration,
@@ -22,6 +24,7 @@ from sentinel_core.performance.cbpe import (
 __all__ = [
     "ALL_METRICS",
     "CBPE",
+    "CalibrationRule",
     "Calibrator",
     "ConceptDriftCheck",
     "Confusion",
@@ -29,6 +32,7 @@ __all__ = [
     "Metric",
     "MetricEstimate",
     "check_concept_drift",
+    "ece_noise_floor",
     "expected_calibration_error",
     "expected_confusion",
     "fit_calibrator",

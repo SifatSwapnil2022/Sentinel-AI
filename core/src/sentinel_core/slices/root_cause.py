@@ -113,6 +113,7 @@ def explain_change(
     pair_features: int = 10,
     max_findings: int = 10,
     specificity: float = 0.8,
+    min_concentration: float = 1.5,
 ) -> RootCauseReport:
     """Rank slices by how much they pulled a mean metric down between two windows.
 
@@ -131,6 +132,10 @@ def explain_change(
             for at least this share of its contribution. "region: C" adds nothing once
             "region: C · income: < 14k" explains 80% of its drop; the narrower slice is the
             more useful answer.
+        min_concentration: A slice must have worsened at least this many times more than the
+            rows of its partition did on average. Without it, a slice holding 95% of traffic
+            "explains" 95% of any drop while saying nothing about where the drop is. 0 turns
+            the check off.
 
     Raises:
         InvalidInputError: Columns or lengths do not line up, or scores are not finite.
@@ -149,7 +154,7 @@ def explain_change(
     findings: list[SliceFinding] = []
     worst_single: dict[str, float] = {}
     for feature in features:
-        summary, found = _partition((feature,), ref, cur, m_ref, min_slice_size)
+        summary, found = _partition((feature,), ref, cur, m_ref, min_slice_size, min_concentration)
         summaries.append(summary)
         findings.extend(found)
         if found:
@@ -157,11 +162,13 @@ def explain_change(
 
     if not 0 < specificity <= 1:
         raise InvalidInputError("specificity must be in (0, 1]")
+    if min_concentration < 0:
+        raise InvalidInputError("min_concentration must be non-negative")
 
     if include_pairs and len(worst_single) >= 2:
         candidates = sorted(worst_single, key=worst_single.__getitem__)[:pair_features]
         for pair in combinations(sorted(candidates, key=features.index), 2):
-            summary, found = _partition(pair, ref, cur, m_ref, min_slice_size)
+            summary, found = _partition(pair, ref, cur, m_ref, min_slice_size, min_concentration)
             summaries.append(summary)
             findings.extend(found)
 
@@ -215,6 +222,7 @@ def _partition(
     cur: pd.DataFrame,
     m_ref_overall: float,
     min_slice_size: int,
+    min_concentration: float,
 ) -> tuple[PartitionSummary, list[SliceFinding]]:
     keys = list(features)
     r = ref.groupby(keys, dropna=False)[_SCORE].agg(["size", "mean"])
@@ -235,7 +243,10 @@ def _partition(
         features=tuple(keys), performance_effect=perf_total, mix_effect=mix_total
     )
 
-    eligible = (n_r >= min_slice_size) & (n_c >= min_slice_size) & (perf < 0)
+    # perf_total is the row-weighted average within-slice change; a cause must be worse than that.
+    change = np.where(n_c > 0, np.nan_to_num(m_c) - m_r, 0.0)
+    concentrated = change <= min_concentration * perf_total if perf_total < 0 else change < 0
+    eligible = (n_r >= min_slice_size) & (n_c >= min_slice_size) & (perf < 0) & concentrated
     findings = []
     for i in np.flatnonzero(eligible):
         key = table.index[int(i)]

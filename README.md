@@ -92,6 +92,7 @@ Each choice and its trade-off is written down in [`docs/adr`](docs/adr):
 2. [Drift methods and fixed PSI bins](docs/adr/0002-drift-methods.md)
 3. [Multivariate drift with a held-out band](docs/adr/0003-multivariate-drift.md)
 4. [Performance estimation and the concept-drift flag](docs/adr/0004-performance-estimation.md)
+5. [Calibration rule, concept-drift band, slice concentration](docs/adr/0005-calibration-and-concept-band.md)
 
 ## Limits
 

@@ -197,3 +197,46 @@ def test_length_mismatch(fitted: CBPE) -> None:
         fitted.estimate([0.2, 0.8], y_pred=[1])
     with pytest.raises(InvalidInputError, match="length"):
         CBPE().fit([0, 1] * 50, [0.5] * 99)
+
+
+def test_concept_band_includes_reference_error(fitted: CBPE, calibrated_scores: MakeScores) -> None:
+    p, y = calibrated_scores(50_000)
+    with_ref = check_concept_drift(fitted, y, p)
+    window_only = check_concept_drift(fitted, y, p, include_reference_error=False)
+    width = with_ref.upper - with_ref.lower
+    # 50k labelled rows vs a 10k reference: the reference error dominates the combined band.
+    assert width > 2 * (window_only.upper - window_only.lower)
+    expected = (
+        2
+        * 3
+        * np.hypot(
+            fitted.sampling_error(Metric.ACCURACY, 50_000),
+            fitted.sampling_error(Metric.ACCURACY, fitted.n_reference),
+        )
+    )
+    assert width == pytest.approx(expected, rel=1e-9)
+
+
+def test_pooled_clean_windows_do_not_flag(calibrated_scores: MakeScores) -> None:
+    flags = 0
+    for _ in range(20):
+        p_ref, y_ref = calibrated_scores(6_000)
+        estimator = CBPE().fit(y_ref, p_ref)
+        p, y = calibrated_scores(8_000)
+        flags += check_concept_drift(estimator, y, p).flagged
+    assert flags <= 1
+
+
+def test_sampling_error_accessors(fitted: CBPE, calibrated_scores: MakeScores) -> None:
+    assert fitted.n_reference == 10_000
+    assert fitted.sampling_error(Metric.ACCURACY, 400) == pytest.approx(
+        fitted.sampling_error(Metric.ACCURACY, 100) / 2
+    )
+    with pytest.raises(NotFittedError):
+        CBPE().sampling_error(Metric.ACCURACY, 10)
+    with pytest.raises(NotFittedError):
+        _ = CBPE().n_reference
+    p, y = calibrated_scores(500)
+    f1_only = CBPE(metrics=[Metric.F1]).fit(y, p)
+    with pytest.raises(InvalidInputError):
+        f1_only.sampling_error(Metric.ACCURACY, 10)

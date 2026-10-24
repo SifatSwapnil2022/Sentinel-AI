@@ -29,7 +29,7 @@ import numpy.typing as npt
 
 from sentinel_core._validation import ArrayLike, as_binary, as_probabilities, require_rows
 from sentinel_core.errors import InsufficientDataError, InvalidInputError, NotFittedError
-from sentinel_core.performance.calibration import Calibrator, fit_calibrator
+from sentinel_core.performance.calibration import CalibrationRule, Calibrator, fit_calibrator
 
 MIN_REFERENCE_ROWS = 50
 
@@ -142,6 +142,7 @@ class CBPE:
             ``y_pred`` is not passed.
         n_sigma: Band half-width in sampling errors (NannyML uses 3).
         calibrate: Force calibration on/off; ``None`` lets cross-validation decide.
+        calibration_rule: How cross-validation decides (see ``calibration.needs_calibration``).
         random_state: Seed for the calibration cross-validation.
     """
 
@@ -152,6 +153,7 @@ class CBPE:
         decision_threshold: float = 0.5,
         n_sigma: float = 3.0,
         calibrate: bool | None = None,
+        calibration_rule: CalibrationRule = "pooled",
         random_state: int = 0,
     ) -> None:
         self.metrics = tuple(dict.fromkeys(metrics))
@@ -164,10 +166,12 @@ class CBPE:
         self.decision_threshold = decision_threshold
         self.n_sigma = n_sigma
         self.calibrate = calibrate
+        self.calibration_rule: CalibrationRule = calibration_rule
         self.random_state = random_state
         self._calibrator: Calibrator | None = None
         self._components: dict[Metric, _ErrorComponent] = {}
         self._reference_metrics: dict[Metric, float] = {}
+        self._n_reference = 0
 
     # ------------------------------------------------------------------ fitting
 
@@ -187,11 +191,16 @@ class CBPE:
             raise InsufficientDataError("CBPE reference labels contain only one class")
 
         self._calibrator = fit_calibrator(
-            y, p, calibrate=self.calibrate, random_state=self.random_state
+            y,
+            p,
+            calibrate=self.calibrate,
+            rule=self.calibration_rule,
+            random_state=self.random_state,
         )
         self._components = {m: _component(m, y, pred) for m in self.metrics}
         realized = realized_confusion(y, pred)
         self._reference_metrics = {m: realized.metric(m) for m in self.metrics}
+        self._n_reference = int(y.size)
         return self
 
     @property
@@ -200,6 +209,19 @@ class CBPE:
         if self._calibrator is None:
             raise NotFittedError("CBPE is not fitted; call fit() first")
         return self._calibrator
+
+    def sampling_error(self, metric: Metric, n_rows: int) -> float:
+        """Sampling error of ``metric`` for a window of ``n_rows`` (NaN when undefined)."""
+        self._require_fitted()
+        if metric not in self._components:
+            raise InvalidInputError(f"estimator was not configured for {metric.value}")
+        return self._components[metric].sampling_error(n_rows)
+
+    @property
+    def n_reference(self) -> int:
+        """Rows in the reference data the estimator was fitted on."""
+        self._require_fitted()
+        return self._n_reference
 
     @property
     def reference_metrics(self) -> dict[Metric, float]:
@@ -274,12 +296,18 @@ def check_concept_drift(
     *,
     metric: Metric = Metric.ACCURACY,
     min_labeled: int = 100,
+    include_reference_error: bool = True,
 ) -> ConceptDriftCheck:
     """Compare the estimate with the realized metric on the *same* labelled rows.
 
     Comparing against an estimate computed over all rows would mix in the effect of which rows
     happened to get labels first. Restricting both sides to labelled rows isolates the one thing
     CBPE cannot see: a change in how inputs relate to outcomes.
+
+    The band combines two independent errors in quadrature: the window's sampling error, and the
+    reference's, because calibration was learned from a finite reference sample. The second is
+    negligible for a single small window but dominates once many labelled rows are pooled; leaving
+    it out makes large pooled windows flag ordinary calibration noise as concept drift.
 
     Raises:
         InsufficientDataError: Fewer than ``min_labeled`` labelled rows.
@@ -294,14 +322,20 @@ def check_concept_drift(
     pred = estimator._predictions(p, y_pred)
 
     estimate = estimator.estimate(p, pred)[metric]
+    error = estimate.sampling_error
+    if include_reference_error:
+        reference_error = estimator.sampling_error(metric, estimator.n_reference)
+        error = float(np.hypot(error, reference_error))
+    half = estimator.n_sigma * error
+    lower, upper = max(estimate.value - half, 0.0), min(estimate.value + half, 1.0)
     realized = realized_confusion(y, pred).metric(metric)
-    outside = realized < estimate.lower or realized > estimate.upper
+    outside = realized < lower or realized > upper
     return ConceptDriftCheck(
         metric=metric,
         estimated=estimate.value,
         realized=realized,
-        lower=estimate.lower,
-        upper=estimate.upper,
+        lower=lower,
+        upper=upper,
         n_labeled=int(y.size),
         flagged=bool(outside),
     )

@@ -129,7 +129,7 @@ def test_cbpe_matches_nannyml(power: float) -> None:
         ).fit(reference)
         theirs = nanny.estimate(analysis).filter(period="analysis").to_df()
 
-    calibrate = needs_calibration(reference["y"], reference["score"])
+    calibrate = needs_calibration(reference["y"], reference["score"], rule="every_fold")
     ours = CBPE(calibrate=calibrate).fit(reference["y"], reference["score"], reference["pred"])
 
     for i in range(len(analysis) // chunk):

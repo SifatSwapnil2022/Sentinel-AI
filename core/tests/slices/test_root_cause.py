@@ -182,3 +182,27 @@ def test_specificity_must_be_a_fraction() -> None:
     frame = pd.DataFrame({"g": ["a"]})
     with pytest.raises(InvalidInputError, match="specificity"):
         explain_change(frame, [1], frame, [1], specificity=0)
+
+
+def test_dominant_slice_is_not_reported_as_a_cause(rng: np.random.Generator) -> None:
+    # 95% of rows share flag=False; the drop is spread evenly, except one small segment.
+    n = 8000
+    ref = pd.DataFrame({"flag": rng.random(n) < 0.05, "seg": rng.choice(list("abcd"), n)})
+    cur = pd.DataFrame({"flag": rng.random(n) < 0.05, "seg": rng.choice(list("abcd"), n)})
+    ref_s = rng.binomial(1, 0.9, n).astype(float)
+    acc = np.where(cur["seg"] == "d", 0.5, 0.85)
+    cur_s = rng.binomial(1, acc).astype(float)
+
+    labels = [f.label for f in explain_change(ref, ref_s, cur, cur_s).findings]
+    assert labels[0] == "seg: d"
+    assert "flag: False" not in labels
+    unfiltered = explain_change(
+        ref, ref_s, cur, cur_s, min_concentration=0, specificity=1.0, include_pairs=False
+    )
+    assert "flag: False" in [f.label for f in unfiltered.findings]
+
+
+def test_min_concentration_must_be_non_negative() -> None:
+    frame = pd.DataFrame({"g": ["a"]})
+    with pytest.raises(InvalidInputError, match="min_concentration"):
+        explain_change(frame, [1], frame, [1], min_concentration=-1)

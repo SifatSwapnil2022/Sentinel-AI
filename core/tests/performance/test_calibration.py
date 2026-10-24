@@ -7,6 +7,7 @@ import pytest
 
 from sentinel_core.errors import InvalidInputError
 from sentinel_core.performance import (
+    ece_noise_floor,
     expected_calibration_error,
     fit_calibrator,
     needs_calibration,
@@ -86,3 +87,35 @@ def test_tiny_minority_class_skips_calibration() -> None:
     y = np.array([0] * 99 + [1])
     p = np.linspace(0.01, 0.99, 100)
     assert not needs_calibration(y, p)
+
+
+def test_pooled_rule_calibrates_mild_overconfidence_every_fold_misses() -> None:
+    # Mild overconfidence on a 6,000-row reference: real, but small enough that one of ten
+    # 600-row folds can get noisier after isotonic calibration.
+    rng = np.random.default_rng(3)
+    true_p = rng.beta(2, 2, 6000)
+    y = rng.binomial(1, true_p)
+    scores = np.clip(0.5 + 1.25 * (true_p - 0.5), 0, 1)
+    assert needs_calibration(y, scores, rule="pooled")
+    oof_says = [needs_calibration(y, scores, rule="every_fold", random_state=s) for s in range(10)]
+    assert not all(oof_says)  # the stricter rule vetoes on at least some splits
+
+
+def test_unknown_rule_is_rejected() -> None:
+    with pytest.raises(InvalidInputError, match="unknown calibration rule"):
+        needs_calibration([0, 1] * 10, [0.2, 0.8] * 10, rule="sometimes")  # type: ignore[arg-type]
+
+
+def test_noise_floor_matches_simulation() -> None:
+    # Average ECE of genuinely calibrated scores should sit close to the analytic floor.
+    rng = np.random.default_rng(11)
+    p = rng.uniform(0, 1, 2000)
+    simulated = np.mean([expected_calibration_error(rng.binomial(1, p), p) for _ in range(300)])
+    assert ece_noise_floor(p) == pytest.approx(simulated, rel=0.15)
+
+
+def test_noise_floor_shrinks_with_more_rows() -> None:
+    rng = np.random.default_rng(0)
+    small, large = rng.uniform(0, 1, 500), rng.uniform(0, 1, 50_000)
+    assert ece_noise_floor(large) < ece_noise_floor(small) / 5
+    assert ece_noise_floor([]) == 0.0
