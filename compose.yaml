@@ -1,0 +1,84 @@
+# Sentinel on one machine: Postgres, Redis, API, worker and dashboard.
+#
+#   docker compose up -d --build                 # dashboard on http://localhost:8080
+#   docker compose --profile demo run --rm demo  # stream the demo scenarios into it
+#
+# Reads are public (SENTINEL_PUBLIC_READ) so the dashboard needs no key; writes need one.
+# Not hardened for the internet: put it behind your own auth before exposing it.
+
+x-server: &server
+  build: { context: ., target: server }
+  image: sentinel-server:local
+  restart: unless-stopped
+  environment: &env
+    SENTINEL_DATABASE_URL: postgresql+asyncpg://sentinel:sentinel@postgres:5432/sentinel
+    SENTINEL_REDIS_URL: redis://redis:6379/0
+    SENTINEL_PUBLIC_READ: "true"
+  depends_on:
+    migrate: { condition: service_completed_successfully }
+    redis: { condition: service_healthy }
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sentinel
+      POSTGRES_PASSWORD: sentinel
+      POSTGRES_DB: sentinel
+    volumes: [postgres:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sentinel -d sentinel"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # The ingest stream holds accepted batches until the worker writes them: persist it.
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    volumes: [redis:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  migrate:
+    <<: *server
+    restart: "no"
+    command: ["sentinel-admin", "migrate"]
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  api:
+    <<: *server
+    ports: ["127.0.0.1:8000:8000"]
+
+  worker:
+    <<: *server
+    command: ["sentinel-worker"]
+    healthcheck: { disable: true }
+
+  web:
+    build: { context: web }
+    image: sentinel-web:local
+    restart: unless-stopped
+    ports: ["127.0.0.1:8080:8080"]
+    depends_on: [api]
+
+  demo:
+    profiles: [demo]
+    build: { context: ., target: demo }
+    image: sentinel-demo:local
+    entrypoint: ["sh", "/app/demo/seed.sh"]
+    environment:
+      <<: *env
+      SENTINEL_URL: http://api:8000
+    depends_on:
+      api: { condition: service_healthy }
+
+volumes:
+  postgres:
+  redis:

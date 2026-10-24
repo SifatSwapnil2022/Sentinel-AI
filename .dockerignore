@@ -1,0 +1,10 @@
+**/.venv
+**/__pycache__
+**/node_modules
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+.git
+web
+docs
+**/tests

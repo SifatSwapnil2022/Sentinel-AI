@@ -22,8 +22,8 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --locked
-      - run: uv run ruff format --check core demo
-      - run: uv run ruff check core demo
+      - run: uv run ruff format --check core server sdk demo
+      - run: uv run ruff check core server sdk demo
       - run: uv run mypy
 
   test:
@@ -33,8 +33,27 @@ jobs:
       fail-fast: false
       matrix:
         python: ["3.11", "3.12", "3.13"]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: sentinel
+          POSTGRES_PASSWORD: sentinel
+          POSTGRES_DB: sentinel_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U sentinel" --health-interval 2s --health-retries 30
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 2s --health-retries 30
     env:
       HYPOTHESIS_PROFILE: ci
+      SENTINEL_TEST_DATABASE_URL: postgresql+asyncpg://sentinel:sentinel@localhost:5432/sentinel_test
+      SENTINEL_TEST_REDIS_URL: redis://localhost:6379/15
+      # Server tests fail rather than skip if the services above are missing.
+      SENTINEL_REQUIRE_SERVICES: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -103,9 +122,37 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: uv sync --locked
-      # Regenerate from the engine, then check the result against the dashboard's schemas.
+      # Regenerate from the engine: the committed data must be exactly what the code produces,
+      # and must satisfy the dashboard's schemas.
       - run: make fixtures
+      - run: git diff --exit-code -- web/public/data
       - run: npm ci
         working-directory: web
       - run: npx vitest run src/data/schema.test.ts
         working-directory: web
+
+  stack:
+    name: Docker stack, end to end
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose build
+      - run: docker compose --profile demo build demo
+      - run: docker compose up -d
+      - name: Wait for the API
+        run: |
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:8000/readyz && exit 0; sleep 2; done
+          docker compose ps; exit 1
+      # Stream one scenario through SDK -> API -> Redis -> worker -> Postgres.
+      - run: docker compose --profile demo run --rm demo --models credit-risk
+      - name: The dashboard, through nginx, shows the incident the scenario causes
+        run: |
+          for i in $(seq 1 60); do
+            curl -sf http://127.0.0.1:8080/v1/fleet > fleet.json && \
+              jq -e '.alerts[] | select(.id == "credit-risk-1" and .kind == "concept_drift")' fleet.json && exit 0
+            sleep 2
+          done
+          cat fleet.json; exit 1
+      - run: curl -sf http://127.0.0.1:8080/ | grep -q '<div id="root">'
+      - if: failure()
+        run: docker compose logs --no-color
