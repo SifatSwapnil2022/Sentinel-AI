@@ -8,9 +8,12 @@ Two deliberate differences from NannyML's version (see ``docs/adr/0003-multivari
 
 1. **Held-out band.** The expected-error band comes from reference rows the PCA was *not*
    fitted on. Measuring on the training rows understates normal error and causes false alarms.
-2. **Band scaled to window size.** The band is computed for the reference chunk size and then
-   scaled by ``sqrt(chunk_size / n)``, so small windows get a wider band and large windows a
-   narrower one, as the standard error of a mean should.
+2. **Band scaled to window size, with the reference's own uncertainty.** The row-level spread
+   is estimated from many small chunks of held-out rows. A window of ``n`` rows gets the band
+   ``mean ± n_sigma · s · sqrt(1/n + 1/n_holdout)``: the first term is the window's sampling error,
+   the second the error in the reference mean itself, which is comparable when the holdout is
+   about the size of a day's traffic. Leaving the second term out gave a 6.5% daily false-alarm
+   rate on realistic data instead of the nominal 0.3%.
 """
 
 from __future__ import annotations
@@ -32,6 +35,8 @@ from sentinel_core.errors import InvalidInputError, NotFittedError
 
 MIN_CHUNKS = 5
 MIN_REFERENCE_ROWS = 100
+DEFAULT_CHUNKS = 50
+"""Chunks the holdout is split into by default; more chunks give a steadier spread estimate."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,8 +53,9 @@ class MultivariateDriftResult:
 @dataclass(frozen=True, slots=True)
 class _Band:
     mean: float
-    chunk_std: float
-    chunk_size: int
+    row_std: float
+    """Spread of single-row error, inferred from chunk means (chunk std * sqrt(chunk size))."""
+    n_holdout: int
 
 
 class PCAReconstructionDrift:
@@ -57,8 +63,8 @@ class PCAReconstructionDrift:
 
     Args:
         variance_to_keep: Fraction of variance the PCA keeps (0-1).
-        chunk_size: Rows per reference chunk used to estimate the band; defaults to a tenth of
-            the held-out rows, at least 20.
+        chunk_size: Rows per reference chunk used to estimate the band's spread; defaults to a
+            fiftieth of the held-out rows, at least 20.
         n_sigma: Band half-width in standard errors.
         holdout_fraction: Share of reference rows held out from PCA fitting to set the band.
         max_categories: Most frequent categories one-hot encoded per categorical column; the
@@ -122,7 +128,7 @@ class PCAReconstructionDrift:
         n_holdout = round(len(shuffled) * self.holdout_fraction)
         fit_part, holdout = shuffled.iloc[n_holdout:], shuffled.iloc[:n_holdout]
 
-        chunk_size = self.chunk_size or max(len(holdout) // 10, 20)
+        chunk_size = self.chunk_size or max(len(holdout) // DEFAULT_CHUNKS, 20)
         n_chunks = len(holdout) // chunk_size
         if n_chunks < MIN_CHUNKS:
             require_rows(len(holdout), MIN_CHUNKS * chunk_size, "multivariate drift holdout")
@@ -138,8 +144,8 @@ class PCAReconstructionDrift:
         ]
         self._band = _Band(
             mean=float(np.mean(errors)),
-            chunk_std=float(np.std(errors, ddof=1)),
-            chunk_size=chunk_size,
+            row_std=float(np.std(errors, ddof=1) * np.sqrt(chunk_size)),
+            n_holdout=n_chunks * chunk_size,
         )
         return self
 
@@ -158,7 +164,7 @@ class PCAReconstructionDrift:
             raise InvalidInputError(f"current window is missing columns: {missing}")
 
         error = float(self._row_errors(current[self._columns]).mean())
-        half_width = self.n_sigma * band.chunk_std * np.sqrt(band.chunk_size / len(current))
+        half_width = self.n_sigma * band.row_std * np.sqrt(1 / len(current) + 1 / band.n_holdout)
         lower, upper = band.mean - half_width, band.mean + half_width
         return MultivariateDriftResult(
             reconstruction_error=error,

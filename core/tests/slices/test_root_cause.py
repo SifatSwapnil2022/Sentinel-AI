@@ -106,11 +106,19 @@ def test_max_findings(rng: np.random.Generator) -> None:
     ref, ref_s = traffic(rng, 3000)
     cur, cur_s = traffic(rng, 3000, broken=True)
     binner = SliceBinner().fit(ref)
+    # One real segment plus noise; ranking on point estimates lists enough to truncate.
     report = explain_change(
-        binner.transform(ref), ref_s, binner.transform(cur), cur_s, max_findings=2
+        binner.transform(ref),
+        ref_s,
+        binner.transform(cur),
+        cur_s,
+        max_findings=2,
+        confidence=0,
+        min_concentration=0,
     )
     assert len(report.findings) == 2
-    assert report.findings[0].contribution <= report.findings[1].contribution
+    first, second = report.findings
+    assert first.contribution <= second.contribution
 
 
 def test_score_helpers() -> None:
@@ -206,3 +214,47 @@ def test_min_concentration_must_be_non_negative() -> None:
     frame = pd.DataFrame({"g": ["a"]})
     with pytest.raises(InvalidInputError, match="min_concentration"):
         explain_change(frame, [1], frame, [1], min_concentration=-1)
+
+
+def exact_scores(rng: np.random.Generator, n: int, hits: int) -> np.ndarray:
+    """``n`` per-row scores with exactly ``hits`` correct, in random order."""
+    return rng.permutation(np.r_[np.ones(hits), np.zeros(n - hits)])
+
+
+def test_clear_small_drop_outranks_noisy_larger_contribution(rng: np.random.Generator) -> None:
+    # "small" loses 30 points on 200 rows: unmistakable. "noisy" loses 6.5 points on 1,000
+    # rows, so on point estimate it contributes slightly more (0.25 x 6.5 > 0.05 x 30), but a
+    # good part of that could be noise. Ranked by the drop we're confident about, "small" leads.
+    groups = ["small", "noisy", "rest"]
+    ref = pd.DataFrame({"segment": np.repeat(groups, [1000, 5000, 14_000])})
+    ref_s = np.concatenate([exact_scores(rng, n, int(n * 0.85)) for n in (1000, 5000, 14_000)])
+    cur = pd.DataFrame({"segment": np.repeat(groups, [200, 1000, 2800])})
+    cur_s = np.concatenate(
+        [exact_scores(rng, 200, 110), exact_scores(rng, 1000, 785), exact_scores(rng, 2800, 2380)]
+    )
+
+    by_point = explain_change(ref, ref_s, cur, cur_s, include_pairs=False, confidence=0)
+    by_confidence = explain_change(ref, ref_s, cur, cur_s, include_pairs=False)
+
+    assert [f.values for f in by_point.findings] == [("noisy",), ("small",)]
+    assert [f.values for f in by_confidence.findings] == [("small",), ("noisy",)]
+    top = by_confidence.findings[0]
+    assert top.change_se == pytest.approx(np.sqrt(0.55 * 0.45 / 199 + 0.85 * 0.15 / 999), rel=1e-6)
+    assert top.contribution < top.confident_contribution < 0
+
+
+def test_drop_within_noise_is_not_reported(rng: np.random.Generator) -> None:
+    # Same accuracy everywhere: one segment will look a little worse by chance, never clearly.
+    ref = pd.DataFrame({"segment": rng.choice(["a", "b"], 10_000)})
+    cur = pd.DataFrame({"segment": rng.choice(["a", "b"], 400)})
+    ref_s = rng.binomial(1, 0.85, 10_000).astype(float)
+    cur_s = rng.binomial(1, 0.85, 400).astype(float)
+    report = explain_change(ref, ref_s, cur, cur_s, include_pairs=False, min_concentration=0)
+    assert report.findings == ()
+
+
+def test_confidence_must_be_non_negative() -> None:
+    frame = pd.DataFrame({"a": ["x"] * 60})
+    scores = np.ones(60)
+    with pytest.raises(InvalidInputError, match="confidence"):
+        explain_change(frame, scores, frame, scores, confidence=-1)

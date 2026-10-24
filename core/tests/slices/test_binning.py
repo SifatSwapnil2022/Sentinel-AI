@@ -104,3 +104,12 @@ def test_errors(reference: pd.DataFrame) -> None:
 )
 def test_format_number(value: float, expected: str) -> None:
     assert format_number(value) == expected
+
+
+def test_whole_float_codes_read_as_integers() -> None:
+    # Counts often arrive as floats (a column with nulls); "0.0 prior claims" reads badly.
+    reference = pd.DataFrame({"claims": [0.0, 1.0, 2.0, 0.5, np.nan] * 40})
+    binner = SliceBinner().fit(reference)
+    assert set(binner.bins("claims").labels) == {"0", "1", "2", "0.5"}
+    labels = binner.transform(pd.DataFrame({"claims": [0.0, 2.0, 0.5, np.nan]}))
+    assert labels["claims"].tolist() == ["0", "2", "0.5", MISSING_LABEL]

@@ -97,7 +97,7 @@ class SliceBinner:
             edges = np.unique(np.quantile(clean.to_numpy(dtype=np.float64), quantiles))
             return FeatureBins(name=name, edges=edges, categories=None, labels=_range_labels(edges))
         top = tuple(clean.value_counts().index[: self.max_categories])
-        labels = tuple(str(c) for c in top)
+        labels = tuple(_category_label(c) for c in top)
         if clean.nunique() > len(top):
             labels = (*labels, OTHER_LABEL)
         return FeatureBins(name=name, edges=None, categories=top, labels=labels)
@@ -111,7 +111,7 @@ class SliceBinner:
             labels = np.asarray(bins.labels, dtype=object)[np.clip(idx, 0, len(bins.labels) - 1)]
         else:
             assert bins.categories is not None
-            known = {c: str(c) for c in bins.categories}
+            known = {c: _category_label(c) for c in bins.categories}
             labels = np.array([known.get(v, OTHER_LABEL) for v in values], dtype=object)
         labels[missing] = MISSING_LABEL
         return pd.Series(labels, index=values.index, dtype=object)
@@ -140,3 +140,10 @@ def format_number(value: float, *, digits: int = 3) -> str:
         if magnitude >= threshold:
             return f"{value / threshold:.{digits}g}{suffix}"
     return f"{value:.{digits}g}"
+
+
+def _category_label(value: Any) -> str:
+    """How a category reads in a finding: whole floats (a count stored as 3.0) print as 3."""
+    if isinstance(value, (float, np.floating)) and np.isfinite(value) and float(value).is_integer():
+        return str(int(value))
+    return str(value)

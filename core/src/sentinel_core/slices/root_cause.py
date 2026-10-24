@@ -48,6 +48,10 @@ class SliceFinding:
     """Performance-effect term ``w_cur · (m_cur − m_ref)``; negative pulled the metric down."""
     share_of_drop: float
     """``contribution`` as a share of its partition's total performance effect (NaN if no drop)."""
+    change_se: float = 0.0
+    """Standard error of the slice's metric change (current minus reference)."""
+    confident_contribution: float = 0.0
+    """``contribution`` at the cautious end of the change's confidence interval; used to rank."""
 
     @property
     def label(self) -> str:
@@ -114,6 +118,7 @@ def explain_change(
     max_findings: int = 10,
     specificity: float = 0.8,
     min_concentration: float = 1.5,
+    confidence: float = 2.0,
 ) -> RootCauseReport:
     """Rank slices by how much they pulled a mean metric down between two windows.
 
@@ -136,11 +141,21 @@ def explain_change(
             rows of its partition did on average. Without it, a slice holding 95% of traffic
             "explains" 95% of any drop while saying nothing about where the drop is. 0 turns
             the check off.
+        confidence: Slices are ranked by the drop they show at ``change + confidence · se``,
+            the cautious end of an approximate interval (2 ≈ 95%), and listed only if that is
+            still a drop. A 19-point drop on 200 rows then outranks a noisier 11-point drop on
+            350 rows, and a drop that could be noise is not reported. 0 ranks by point estimate.
 
     Raises:
         InvalidInputError: Columns or lengths do not line up, or scores are not finite.
         InsufficientDataError: Either window is empty.
     """
+    if not 0 < specificity <= 1:
+        raise InvalidInputError("specificity must be in (0, 1]")
+    if min_concentration < 0:
+        raise InvalidInputError("min_concentration must be non-negative")
+    if confidence < 0:
+        raise InvalidInputError("confidence must be non-negative")
     features = [str(c) for c in reference_slices.columns]
     if [str(c) for c in current_slices.columns] != features:
         raise InvalidInputError("reference and current slices must have the same columns")
@@ -153,27 +168,23 @@ def explain_change(
     summaries: list[PartitionSummary] = []
     findings: list[SliceFinding] = []
     worst_single: dict[str, float] = {}
+    rules = (min_slice_size, min_concentration, confidence)
     for feature in features:
-        summary, found = _partition((feature,), ref, cur, m_ref, min_slice_size, min_concentration)
+        summary, found = _partition((feature,), ref, cur, m_ref, *rules)
         summaries.append(summary)
         findings.extend(found)
         if found:
-            worst_single[feature] = min(f.contribution for f in found)
-
-    if not 0 < specificity <= 1:
-        raise InvalidInputError("specificity must be in (0, 1]")
-    if min_concentration < 0:
-        raise InvalidInputError("min_concentration must be non-negative")
+            worst_single[feature] = min(f.confident_contribution for f in found)
 
     if include_pairs and len(worst_single) >= 2:
         candidates = sorted(worst_single, key=worst_single.__getitem__)[:pair_features]
         for pair in combinations(sorted(candidates, key=features.index), 2):
-            summary, found = _partition(pair, ref, cur, m_ref, min_slice_size, min_concentration)
+            summary, found = _partition(pair, ref, cur, m_ref, *rules)
             summaries.append(summary)
             findings.extend(found)
 
     findings = _prefer_specific(findings, specificity)
-    findings.sort(key=lambda f: f.contribution)
+    findings.sort(key=lambda f: (f.confident_contribution, f.contribution))
     summaries.sort(key=lambda s: s.performance_effect)
     return RootCauseReport(
         metric_reference=m_ref,
@@ -223,11 +234,13 @@ def _partition(
     m_ref_overall: float,
     min_slice_size: int,
     min_concentration: float,
+    confidence: float,
 ) -> tuple[PartitionSummary, list[SliceFinding]]:
     keys = list(features)
-    r = ref.groupby(keys, dropna=False)[_SCORE].agg(["size", "mean"])
-    c = cur.groupby(keys, dropna=False)[_SCORE].agg(["size", "mean"])
-    r.columns, c.columns = ["size_ref", "mean_ref"], ["size_cur", "mean_cur"]
+    r = ref.groupby(keys, dropna=False)[_SCORE].agg(["size", "mean", "var"])
+    c = cur.groupby(keys, dropna=False)[_SCORE].agg(["size", "mean", "var"])
+    r.columns = ["size_ref", "mean_ref", "var_ref"]
+    c.columns = ["size_cur", "mean_cur", "var_cur"]
     table = r.join(c, how="outer")
 
     n_r = table["size_ref"].fillna(0).to_numpy(dtype=np.float64)
@@ -246,7 +259,22 @@ def _partition(
     # perf_total is the row-weighted average within-slice change; a cause must be worse than that.
     change = np.where(n_c > 0, np.nan_to_num(m_c) - m_r, 0.0)
     concentrated = change <= min_concentration * perf_total if perf_total < 0 else change < 0
-    eligible = (n_r >= min_slice_size) & (n_c >= min_slice_size) & (perf < 0) & concentrated
+
+    # Standard error of the change, from each window's within-slice variance of per-row scores.
+    with np.errstate(divide="ignore", invalid="ignore"):
+        var_r = table["var_ref"].fillna(0).to_numpy(dtype=np.float64)
+        var_c = table["var_cur"].fillna(0).to_numpy(dtype=np.float64)
+        se = np.sqrt(np.where(n_c > 0, var_c / n_c, 0) + np.where(n_r > 0, var_r / n_r, 0))
+    cautious = change + confidence * se
+    confident = w_c * np.minimum(cautious, 0.0)
+
+    eligible = (
+        (n_r >= min_slice_size)
+        & (n_c >= min_slice_size)
+        & (perf < 0)
+        & concentrated
+        & (cautious < 0)
+    )
     findings = []
     for i in np.flatnonzero(eligible):
         key = table.index[int(i)]
@@ -263,6 +291,8 @@ def _partition(
                 metric_current=float(m_c[i]),
                 contribution=float(perf[i]),
                 share_of_drop=float(perf[i] / perf_total) if perf_total < 0 else float("nan"),
+                change_se=float(se[i]),
+                confident_contribution=float(confident[i]),
             )
         )
     return summary, findings

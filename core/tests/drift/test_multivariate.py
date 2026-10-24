@@ -49,8 +49,31 @@ def test_band_narrows_as_window_grows(
     small = detector.score(correlated_frame(rng, 100))
     large = detector.score(correlated_frame(rng, 5000))
     assert (large.upper - large.lower) < (small.upper - small.lower)
+    # Width follows sqrt(1/n + 1/n_holdout); the holdout is half the 6,000-row reference.
+    expected = np.sqrt(1 / 100 + 1 / 3000) / np.sqrt(1 / 5000 + 1 / 3000)
     ratio = (small.upper - small.lower) / (large.upper - large.lower)
-    assert ratio == pytest.approx(np.sqrt(50), rel=1e-9)
+    assert ratio == pytest.approx(expected, rel=1e-9)
+
+
+def test_band_stops_narrowing_at_the_reference_floor(
+    rng: np.random.Generator, detector: PCAReconstructionDrift
+) -> None:
+    # Past the holdout size, more rows barely help: the reference mean's error dominates.
+    def width(n: int) -> float:
+        result = detector.score(correlated_frame(rng, n))
+        return result.upper - result.lower
+
+    assert width(50_000) / width(200_000) < 1.03
+    expected = np.sqrt(1 / 300 + 1 / 3000) / np.sqrt(1 / 3000 + 1 / 3000)
+    assert width(300) / width(3_000) == pytest.approx(expected, rel=1e-9)
+
+
+@pytest.mark.slow
+def test_daily_false_alarm_rate_is_near_nominal(rng: np.random.Generator) -> None:
+    # Reference about the size of a day's traffic: the case that used to alarm 6.5% of days.
+    detector = PCAReconstructionDrift().fit(correlated_frame(rng, 4000))
+    alarms = sum(detector.score(correlated_frame(rng, 1600)).drifted for _ in range(400))
+    assert alarms / 400 <= 0.015
 
 
 def test_handles_missing_values_and_unseen_categories(
