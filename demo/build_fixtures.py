@@ -187,7 +187,8 @@ CONCEPT_WINDOW_DAYS = 7
 to resolve a 2-3 point gap at 3 sigma, while a week's are not."""
 
 
-def concept_flag(fitted: Fitted, windows: list[Window], day: int) -> bool | None:
+def label_check(fitted: Fitted, windows: list[Window], day: int) -> dict[str, Any] | None:
+    """The rolling-week comparison the concept-drift signal uses, exactly as the engine ran it."""
     span = windows[max(0, day - CONCEPT_WINDOW_DAYS + 1) : day + 1]
     mask = np.concatenate([w.labelled for w in span])
     outcome = np.concatenate([w.outcome for w in span])[mask]
@@ -197,7 +198,14 @@ def concept_flag(fitted: Fitted, windows: list[Window], day: int) -> bool | None
         check = check_concept_drift(fitted.cbpe, outcome, proba, pred, min_labeled=300)
     except InsufficientDataError:
         return None
-    return check.flagged
+    return {
+        "estimated": r(check.estimated),
+        "lower": r(check.lower),
+        "upper": r(check.upper),
+        "measured": r(check.realized),
+        "labelled": check.n_labeled,
+        "flagged": check.flagged,
+    }
 
 
 def histogram(ref: ColumnReference, ref_values: pd.Series, cur_values: pd.Series) -> dict[str, Any]:
@@ -312,8 +320,8 @@ def investigate(
         ref_scores,
         fitted.binner.transform(cur_frame),
         cur_scores,
-        min_slice_size=40,
-        max_findings=8,
+        min_slice_size=60,
+        max_findings=6,
     )
     # Summarise with the partition that explains most: the top finding's when a concentrated
     # slice exists; otherwise the one with the largest traffic-mix effect (a broad shift).
@@ -451,7 +459,8 @@ def build_model(spec: ModelSpec, rng: np.random.Generator) -> tuple[dict, dict, 
                 "estimate": estimate_block(fitted, w),
                 "measured": measured_block(w),
                 "labelCoverage": r(float(w.labelled.mean())),
-                "conceptFlag": concept_flag(fitted, windows, w.day),
+                "labelCheck": (check := label_check(fitted, windows, w.day)),
+                "conceptFlag": None if check is None else check["flagged"],
                 "multivariate": {
                     "error": r(mv.reconstruction_error),
                     "lower": r(mv.lower),
