@@ -78,7 +78,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
       # The reference libraries need pandas < 3, so they get their own environment.
       - run: uv venv --python 3.12 .parity
-      - run: uv pip install --python .parity -e ./core pytest hypothesis evidently nannyml "pandas<3"
+      - run: uv pip install --python .parity -e ./core pytest pytest-asyncio hypothesis evidently nannyml "pandas<3"
       - run: .parity/bin/python -m pytest core/tests/parity -p no:cacheprovider --import-mode=importlib -v
 
   web:

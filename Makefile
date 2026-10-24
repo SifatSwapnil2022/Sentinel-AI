@@ -29,7 +29,7 @@ cov: ## Tests with a coverage report
 
 parity: ## Compare against Evidently and NannyML in a separate environment
 	uv venv --python 3.12 $(PARITY_ENV)
-	uv pip install --python $(PARITY_ENV) -e ./core pytest hypothesis evidently nannyml "pandas<3"
+	uv pip install --python $(PARITY_ENV) -e ./core pytest pytest-asyncio hypothesis evidently nannyml "pandas<3"
 	NML_DISABLE_USAGE_LOGGING=1 $(PARITY_ENV)/bin/python -m pytest core/tests/parity \
 		-p no:cacheprovider --import-mode=importlib
 
