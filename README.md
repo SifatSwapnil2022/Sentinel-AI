@@ -7,6 +7,8 @@ Sentinel estimates a classifier's accuracy from its own confidence scores, check
 against real accuracy once labels arrive, detects when features drift on their own or in how
 they relate to each other, and points to the segment of traffic behind a drop.
 
+**Live demo: [sentinel-ai-sage-gamma.vercel.app](https://sentinel-ai-sage-gamma.vercel.app/)** (the dashboard on demo traffic run through the engine)
+
 [![CI](https://github.com/SifatSwapnil2022/sentinel-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/SifatSwapnil2022/sentinel-ai/actions/workflows/ci.yml)
 
 ## Status
