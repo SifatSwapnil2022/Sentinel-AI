@@ -25,3 +25,11 @@ htmlcov/
 .env
 .env.*
 !.env.example
+
+# Web
+node_modules/
+web/dist/
+web/playwright-report/
+web/test-results/
+
+web/coverage/

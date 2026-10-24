@@ -61,3 +61,51 @@ jobs:
       - run: uv venv --python 3.12 .parity
       - run: uv pip install --python .parity -e ./core pytest hypothesis evidently nannyml "pandas<3"
       - run: .parity/bin/python -m pytest core/tests/parity -p no:cacheprovider --import-mode=importlib -v
+
+  web:
+    name: Dashboard
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npx vitest run --coverage
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e
+        env:
+          CI: "true"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: web/playwright-report
+
+  fixtures:
+    name: Demo data matches the dashboard contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: uv sync --locked
+      # Regenerate from the engine, then check the result against the dashboard's schemas.
+      - run: make fixtures
+      - run: npm ci
+        working-directory: web
+      - run: npx vitest run src/data/schema.test.ts
+        working-directory: web
