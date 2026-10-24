@@ -1,0 +1,38 @@
+[project]
+name = "sentinel-server"
+version = "0.1.0"
+description = "Sentinel's API, storage and background workers."
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "Md Sifatullah Sheikh" }]
+dependencies = [
+    "sentinel-core",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "sqlalchemy[asyncio]>=2.0.30",
+    "asyncpg>=0.29",
+    "alembic>=1.13",
+    "redis>=5.0",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "orjson>=3.10",
+    "joblib>=1.4",
+    "python-multipart>=0.0.9",
+    "numpy>=1.26",
+    "pandas>=2.1",
+]
+
+[project.scripts]
+sentinel-api = "sentinel_server.api.main:run"
+sentinel-worker = "sentinel_server.worker.main:run"
+sentinel-admin = "sentinel_server.admin:main"
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/sentinel_server"]
+
+[tool.uv.sources]
+sentinel-core = { workspace = true }
