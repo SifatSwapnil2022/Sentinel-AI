@@ -15,7 +15,7 @@ import numpy as np
 
 from ._json import SCHEMA_VERSION, r
 from .days import DayData
-from .incidents import Episode, investigate
+from .incidents import MISSING_JUMP, Episode, investigate
 from .monitors import Monitors
 
 INVESTIGATION_MAX_DAYS = 14
@@ -97,6 +97,18 @@ def model_document(
         "segments": segments or {"window": {"to": latest["date"], "rows": 0}, "rows": []},
         "alertIds": list(incident_ids),
     }
+
+
+def _missing_features(day: dict[str, Any], monitors: Monitors) -> list[dict[str, Any]]:
+    """Features missing well above their reference rate on ``day``, worst first."""
+    quality = day.get("dataQuality") or {}
+    rows = [
+        {"name": name, "nullRate": q["nullRate"], "referenceNullRate": q["referenceNullRate"]}
+        for name in monitors.columns
+        if (q := quality.get(name)) is not None
+        and q["nullRate"] - q["referenceNullRate"] > MISSING_JUMP
+    ]
+    return sorted(rows, key=lambda q: q["referenceNullRate"] - q["nullRate"])
 
 
 def _null_rate(day: dict[str, Any], name: str) -> float | None:
@@ -185,6 +197,7 @@ def incident_document(
         },
         "signals": [s.to_json() for s in sorted(signals, key=lambda s: s.fired_on)],
         "driftedFeatures": drifted,
+        "missingFeatures": _missing_features(latest_day, monitors),
     }
 
 
