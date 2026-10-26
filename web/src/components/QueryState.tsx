@@ -32,7 +32,7 @@ export function QueryState<T>({ query, subject, children }: Props<T>) {
               Try again
             </button>
           )}
-          <Link to="/">Go to overview</Link>
+          <Link to="/overview">Go to overview</Link>
         </div>
       </div>
     );

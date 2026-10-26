@@ -13,9 +13,11 @@ import { ModelHeader } from "./ModelHeader";
 import styles from "./ModelInputsPage.module.css";
 import layout from "./layout.module.css";
 import { TableScroll } from "../components/TableScroll";
+import { useTitle } from "../lib/useTitle";
 
 export function ModelInputsPage() {
   const { modelId = "" } = useParams();
+  useTitle(`${modelId} inputs`);
   const model = useModel(modelId);
   return (
     <QueryState query={model} subject="this model">

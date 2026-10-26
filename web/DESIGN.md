@@ -86,6 +86,33 @@ Plain words for what people see: "Estimated accuracy", "Measured accuracy", "Lab
 built from the data. Errors say what failed and what to do. No arrows on links, no exclamation
 marks.
 
+## The landing page
+
+**Who:** someone deciding in two minutes whether Sentinel solves a real problem: a hiring
+engineer, a team lead, an ML engineer with a silent model. **Job:** make the problem concrete,
+show the product solving it, and prove the claims.
+
+The page argues in the order a reader doubts:
+
+1. **The problem, with real numbers.** The hero pairs two readings from the demo: what labels
+   say (the last day most are in) and what Sentinel estimates today. The gap is the problem.
+   The fraud model's real chart sits below it, rings appearing only as labels arrive.
+2. **Why existing tools miss it.** Three gaps, each with a source: label delay (card networks'
+   120-day dispute window), input drift being the wrong alarm (even label-free estimators assume
+   no concept drift), and averages hiding segment failures.
+3. **What Sentinel does**, one row per check: what it does, the method, and a link to the live
+   demo page that shows it working. Every figure in this section comes from the data documents
+   (`lib/story.ts`), never typed into copy, so regenerating the demo can't make the page wrong.
+   A case missing from the data (a live deployment with other models) is left out.
+4. **How it works**: the data path as an ordered list, so it reads in order to a screen reader
+   and reflows to a vertical pipeline on phones.
+5. **How it's checked**: measured figures only, each with its denominator.
+6. **How to run it, and what it doesn't do yet.** Stating limits is part of the argument.
+
+Same tokens, type and marks as the dashboard; the content column is centred because the page is
+read top to bottom. The primary button is ink on field: blue on white fails contrast in the dark
+theme, and blue is reserved for data marks. The dashboard moved to `/overview`.
+
 ## Review against generic defaults
 
 Checked before building, and changed where the first draft drifted toward a default:

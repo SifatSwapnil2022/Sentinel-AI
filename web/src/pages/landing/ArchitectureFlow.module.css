@@ -1,0 +1,102 @@
+/* A pipeline of stages joined by a rule; horizontal on wide screens, vertical on phones. */
+
+.flow {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.stage {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  padding: var(--space-5) var(--space-4) var(--space-5) 0;
+}
+
+.stage + .stage {
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--hairline);
+}
+
+/* The estimate tick marks each stage's place on the path. */
+.stage::before {
+  content: "";
+  position: absolute;
+  top: -4px;
+  left: 0;
+  width: 7px;
+  height: 7px;
+  background: var(--estimate);
+}
+
+.stage + .stage::before {
+  left: -4px;
+}
+
+.name {
+  font-weight: 600;
+}
+
+/* Graphite, not estimate blue: blue is for data marks, and fails contrast at this size. */
+.tech {
+  font-family: var(--font-data);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--graphite);
+}
+
+.detail {
+  font-size: var(--text-sm);
+  color: var(--graphite);
+  line-height: 1.45;
+}
+
+@media (max-width: 1000px) {
+  .flow {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .stage:nth-child(4) {
+    padding-left: 0;
+    border-left: 0;
+    border-top: 1px solid var(--hairline);
+  }
+
+  .stage:nth-child(n + 5) {
+    border-top: 1px solid var(--hairline);
+  }
+
+  .stage:nth-child(4)::before {
+    left: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .flow {
+    grid-template-columns: 1fr;
+    border-top: 0;
+    border-bottom: 0;
+    border-left: 1px solid var(--hairline);
+  }
+
+  .stage,
+  .stage + .stage,
+  .stage:nth-child(4),
+  .stage:nth-child(n + 5) {
+    padding: var(--space-3) 0 var(--space-3) var(--space-5);
+    border-left: 0;
+    border-top: 0;
+  }
+
+  .stage::before,
+  .stage + .stage::before,
+  .stage:nth-child(4)::before {
+    top: calc(var(--space-3) + 7px);
+    left: -4px;
+  }
+}

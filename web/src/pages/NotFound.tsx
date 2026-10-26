@@ -1,14 +1,16 @@
 import { isRouteErrorResponse, Link, useRouteError } from "react-router";
 import layout from "./layout.module.css";
+import { useTitle } from "../lib/useTitle";
 
 export function NotFound() {
+  useTitle("Page not found");
   return (
     <div className={layout.page}>
       <header className={layout.header}>
         <h1>This page doesn't exist</h1>
         <p className={layout.meta}>Check the address, or start from the overview.</p>
         <p>
-          <Link to="/">Go to overview</Link>
+          <Link to="/overview">Go to overview</Link>
         </p>
       </header>
     </div>
@@ -29,7 +31,7 @@ export function RouteError() {
       <p style={{ margin: "12px 0" }}>Reloading usually fixes it. If it doesn't, the detail below helps.</p>
       <pre style={{ whiteSpace: "pre-wrap", fontSize: 13 }}>{detail}</pre>
       <p>
-        <a href="/">Go to overview</a>
+        <a href="/overview">Go to overview</a>
       </p>
     </main>
   );

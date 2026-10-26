@@ -5,6 +5,7 @@ import { useFleet } from "../data/api";
 import type { Status } from "../data/schema";
 import { longDate } from "../lib/format";
 import styles from "./AppShell.module.css";
+import { Wordmark } from "./Wordmark";
 import { type ThemeChoice, useTheme } from "./theme";
 
 const RANK: Record<Status, number> = { critical: 0, warning: 1, healthy: 2 };
@@ -32,7 +33,7 @@ export function AppShell() {
         Skip to content
       </a>
       <header className={styles.bar}>
-        <Wordmark />
+        <Wordmark to="/" label="Sentinel home" />
         <button
           type="button"
           className={styles.menuButton}
@@ -55,12 +56,12 @@ export function AppShell() {
         }}
       >
         <div className={styles.navHead}>
-          <Wordmark />
+          <Wordmark to="/" label="Sentinel home" />
         </div>
 
         <ul className={styles.primary}>
           <li>
-            <NavLink to="/" end className={styles.link ?? ""}>
+            <NavLink to="/overview" end className={styles.link ?? ""}>
               Overview
             </NavLink>
           </li>
@@ -116,17 +117,5 @@ export function AppShell() {
         <Outlet />
       </main>
     </div>
-  );
-}
-
-function Wordmark() {
-  return (
-    <NavLink to="/" className={styles.wordmark ?? ""} aria-label="Sentinel overview">
-      <svg width="22" height="14" viewBox="0 0 22 14" aria-hidden="true">
-        <rect x="1" y="4" width="20" height="6" rx="1.5" className={styles.wordmarkBand} />
-        <line x1="12" x2="12" y1="0.5" y2="13.5" className={styles.wordmarkTick} />
-      </svg>
-      <span>Sentinel</span>
-    </NavLink>
   );
 }

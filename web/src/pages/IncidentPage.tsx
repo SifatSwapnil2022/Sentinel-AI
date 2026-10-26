@@ -9,6 +9,7 @@ import { ago, count, decimal, percent, points, pValue, shortDate } from "../lib/
 import styles from "./IncidentPage.module.css";
 import layout from "./layout.module.css";
 import { TableScroll } from "../components/TableScroll";
+import { useTitle } from "../lib/useTitle";
 
 const SIGNAL_RULES: Record<SignalKind, string> = {
   estimate_drop:
@@ -21,6 +22,7 @@ const SIGNAL_RULES: Record<SignalKind, string> = {
 
 export function IncidentPage() {
   const { incidentId = "" } = useParams();
+  useTitle(`Incident ${incidentId}`);
   const incident = useIncident(incidentId);
   return (
     <QueryState query={incident} subject="this incident">

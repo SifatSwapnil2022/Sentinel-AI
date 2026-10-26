@@ -13,7 +13,8 @@ function likelyRange(modelId: string): string {
 }
 
 const PAGES = [
-  ["overview", "/"],
+  ["landing", "/"],
+  ["overview", "/overview"],
   ["model", "/models/credit-risk"],
   ["inputs", "/models/fraud-screen/inputs"],
   ["incident (segment)", "/incidents/credit-risk-1"],
@@ -50,8 +51,11 @@ test.describe("layout", () => {
   }
 });
 
-test("an engineer follows an alert from the overview to its cause", async ({ page, isMobile }) => {
+test("a visitor goes from the landing page to an alert's cause", async ({ page, isMobile }) => {
   await page.goto("/");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/before its labels arrive/);
+  await page.getByRole("link", { name: "Open the live dashboard" }).click();
+  await expect(page).toHaveURL(/\/overview$/);
   await expect(page.getByText("Three of four models need attention")).toBeVisible();
 
   if (isMobile) await page.getByRole("button", { name: "Menu" }).click();
@@ -90,7 +94,7 @@ test("hovering the chart shows that day's values", async ({ page, isMobile }) =>
 });
 
 test("the theme choice survives a reload", async ({ page, isMobile }) => {
-  await page.goto("/");
+  await page.goto("/overview");
   if (isMobile) await page.getByRole("button", { name: "Menu" }).click();
   await page.getByRole("radio", { name: "Dark" }).check();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
@@ -102,10 +106,37 @@ test("a missing model explains itself instead of crashing", async ({ page }) => 
   await page.goto("/models/does-not-exist");
   await expect(page.getByRole("heading", { name: "Can't find this model" })).toBeVisible();
   await page.getByRole("link", { name: "Go to overview" }).click();
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/overview$/);
 });
 
 test("an unknown address shows the not-found page", async ({ page }) => {
   await page.goto("/nowhere/at/all");
   await expect(page.getByRole("heading", { name: "This page doesn't exist" })).toBeVisible();
+});
+
+test("the landing page's evidence links lead to the cases it describes", async ({ page }) => {
+  const fleet = JSON.parse(readFileSync("public/data/fleet.json", "utf8")) as {
+    models: { id: string; measured: { value: number } }[];
+  };
+  const fraud = fleet.models.find((m) => m.id === "fraud-screen");
+  if (!fraud) throw new Error("demo has no fraud-screen");
+
+  await page.goto("/");
+  const readings = page.getByRole("figure", { name: /a fraud model in the demo/ });
+  await expect(readings).toContainText("Labels say");
+  await expect(readings).toContainText(`${(fraud.measured.value * 100).toFixed(1)}%`);
+  await expect(page.getByRole("group", { name: /Accuracy over 30 days/ })).toBeVisible();
+
+  const approach = page.locator("#approach");
+  await approach.getByRole("link", { name: "See the incident" }).first().click();
+  await expect(page).toHaveURL(/\/incidents\/credit-risk-1$/);
+  await expect(page.getByText(/concentrated where division = Khulna/)).toBeVisible();
+});
+
+test("section links scroll to their sections", async ({ page, isMobile }) => {
+  test.skip(isMobile, "section links are hidden on phones");
+  await page.goto("/");
+  await page.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: "Evidence" }).click();
+  await expect(page).toHaveURL(/#evidence$/);
+  await expect(page.getByRole("heading", { name: "How it's checked" })).toBeInViewport();
 });

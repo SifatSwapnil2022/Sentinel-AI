@@ -2,8 +2,10 @@ import { QueryState } from "../components/QueryState";
 import { useFleet } from "../data/api";
 import { IncidentList } from "./FleetPage";
 import layout from "./layout.module.css";
+import { useTitle } from "../lib/useTitle";
 
 export function IncidentsPage() {
+  useTitle("Incidents");
   const fleet = useFleet();
   return (
     <QueryState query={fleet} subject="incidents">

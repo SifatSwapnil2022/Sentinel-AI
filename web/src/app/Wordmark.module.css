@@ -1,0 +1,19 @@
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  text-decoration: none;
+}
+
+.band {
+  fill: var(--estimate-band-strong);
+}
+
+.tick {
+  stroke: var(--estimate);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}

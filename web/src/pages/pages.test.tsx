@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { fleetSchema, incidentSchema, modelSchema } from "../data/schema";
 import { percent, percentRange } from "../lib/format";
@@ -13,7 +13,7 @@ afterEach(() => {
 describe("overview", () => {
   it("leads with a sentence and lists models worst first", async () => {
     mockData();
-    renderRoute("/");
+    renderRoute("/overview");
     expect(
       await screen.findByText("Three of four models need attention: two critical and one with a warning."),
     ).toBeInTheDocument();
@@ -26,7 +26,7 @@ describe("overview", () => {
 
   it("describes every forest-plot glyph for screen readers", async () => {
     mockData();
-    renderRoute("/");
+    renderRoute("/overview");
     const fraud = fleetSchema.parse(fixture("fleet.json")).models.find((m) => m.id === "fraud-screen");
     if (!fraud) throw new Error("fixture has no fraud-screen");
     const glyph = await screen.findByRole("img", {
@@ -121,3 +121,61 @@ describe("incident page", () => {
     expect(dates).toEqual([...dates].sort());
   });
 });
+
+describe("landing page", () => {
+  it("states the problem with the demo's own numbers and links into the dashboard", async () => {
+    mockData();
+    renderRoute("/");
+    expect(
+      await screen.findByRole("heading", { level: 1, name: /before its labels arrive/ }),
+    ).toBeInTheDocument();
+
+    const fleet = fleetSchema.parse(fixture("fleet.json"));
+    const fraud = fleet.models.find((m) => m.id === "fraud-screen");
+    if (!fraud) throw new Error("fixture has no fraud-screen");
+    const readings = await screen.findByRole("figure", { name: /a fraud model in the demo/ });
+    expect(within(readings).getByText(percent(fraud.measured.value))).toBeInTheDocument();
+    expect(within(readings).getByText(percent(fraud.estimate.value))).toBeInTheDocument();
+
+    expect(screen.getByRole("link", { name: "Open the live dashboard" })).toHaveAttribute(
+      "href",
+      "/overview",
+    );
+    await waitFor(() => {
+      expect(screen.getAllByRole("link", { name: "See the incident" })).toHaveLength(2);
+    });
+    const proofs = screen.getAllByRole("link", { name: "See the incident" });
+    expect(proofs.map((a) => a.getAttribute("href"))).toEqual([
+      "/incidents/credit-risk-1",
+      "/incidents/claims-triage-1",
+    ]);
+    // named in the problem ("averages hide the break") and in the approach that finds it
+    expect(await screen.findAllByText(/division = Khulna/)).toHaveLength(2);
+  });
+
+  it("still makes its case when the demo cases are missing", async () => {
+    mockData({ "fleet.json": () => Response.json({ ...fixture("fleet.json") as object, alerts: [] }) });
+    renderRoute("/");
+    expect(await screen.findByRole("heading", { name: "Why models fail quietly" })).toBeInTheDocument();
+    expect(screen.queryByRole("figure", { name: /a fraud model/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "See the incident" })).not.toBeInTheDocument();
+    expect(screen.getByText(/A small drop overall can be a collapse/)).toBeInTheDocument();
+  });
+});
+
+describe("page titles", () => {
+  it.each([
+    ["/overview", "Overview – Sentinel"],
+    ["/models/credit-risk", "credit-risk – Sentinel"],
+    ["/incidents/credit-risk-1", "Incident credit-risk-1 – Sentinel"],
+    ["/incidents", "Incidents – Sentinel"],
+    ["/nowhere", "Page not found – Sentinel"],
+  ])("%s", async (path, title) => {
+    mockData();
+    renderRoute(path);
+    await waitFor(() => {
+      expect(document.title).toBe(title);
+    });
+  });
+});
+

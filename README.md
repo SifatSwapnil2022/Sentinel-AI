@@ -7,7 +7,8 @@ Sentinel estimates a classifier's accuracy from its own confidence scores, check
 against real accuracy once labels arrive, detects when features drift on their own or in how
 they relate to each other, and points to the segment of traffic behind a drop.
 
-**Live demo: [sentinel-ai-sage-gamma.vercel.app](https://sentinel-ai-sage-gamma.vercel.app/)** (the dashboard on demo traffic run through the engine)
+**Live: [sentinel-ai-sage-gamma.vercel.app](https://sentinel-ai-sage-gamma.vercel.app/)**: the problem, the approach and the evidence, then the
+[dashboard](https://sentinel-ai-sage-gamma.vercel.app/overview) on demo traffic run through the engine.
 
 [![CI](https://github.com/SifatSwapnil2022/sentinel-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/SifatSwapnil2022/sentinel-ai/actions/workflows/ci.yml)
 
@@ -151,10 +152,10 @@ realized  0.842
   the oldest records when the buffer is full. Python coverage is 95%.
 - **Realistic traffic.** Running the demo scenarios through the engine exposed three problems the
   unit tests had not, each now fixed and tested ([ADR 5](docs/adr/0005-calibration-and-concept-band.md)).
-- **Dashboard**: 58 unit and component tests, a contract test that every generated JSON file
-  passes the dashboard's schemas, and 53 Playwright tests on desktop and phone covering the main
-  journeys, keyboard access to charts, no sideways scrolling, and zero serious axe accessibility
-  violations in light and dark mode.
+- **Web**: 72 unit and component tests, a contract test that every generated JSON file passes
+  the dashboard's schemas, and 62 Playwright tests on desktop and phone covering the journey from
+  the landing page to an incident's cause, keyboard access to charts, no sideways scrolling, and
+  zero serious axe accessibility violations in light and dark mode on every page.
 - Strict mypy and TypeScript, ruff and ESLint, CI on Python 3.11–3.13 and Node 22.
 
 ## Run it
@@ -178,7 +179,7 @@ make parity             # compare with Evidently and NannyML (separate environme
 make fixtures           # regenerate the dashboard's demo data from the engine
 
 cd web && npm ci
-npm run dev             # dashboard at http://localhost:5173, on the bundled demo data
+npm run dev             # http://localhost:5173 (dashboard at /overview), on the bundled demo data
 VITE_SENTINEL_API=http://localhost:8000 npm run dev   # ... or on a live API
 npm run check && npm run e2e
 ```

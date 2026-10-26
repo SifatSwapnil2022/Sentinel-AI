@@ -15,7 +15,7 @@ export function ModelHeader({ model }: { model: Model }) {
   return (
     <header className={layout.header}>
       <nav aria-label="Breadcrumb" className={layout.crumbs}>
-        <Link to="/">Overview</Link>
+        <Link to="/overview">Overview</Link>
         <span aria-hidden="true">/</span>
         <span aria-current="page">{model.name}</span>
       </nav>

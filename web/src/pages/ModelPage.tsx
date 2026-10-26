@@ -12,6 +12,7 @@ import { ModelHeader } from "./ModelHeader";
 import styles from "./ModelPage.module.css";
 import layout from "./layout.module.css";
 import { TableScroll } from "../components/TableScroll";
+import { useTitle } from "../lib/useTitle";
 
 const METRICS: { value: MetricName; label: string }[] = [
   { value: "accuracy", label: "Accuracy" },
@@ -22,6 +23,7 @@ const METRICS: { value: MetricName; label: string }[] = [
 
 export function ModelPage() {
   const { modelId = "" } = useParams();
+  useTitle(modelId);
   const model = useModel(modelId);
   return (
     <QueryState query={model} subject="this model">

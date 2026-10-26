@@ -12,12 +12,14 @@ import { useMediaQuery } from "../lib/useMediaQuery";
 import styles from "./FleetPage.module.css";
 import layout from "./layout.module.css";
 import { TableScroll } from "../components/TableScroll";
+import { useTitle } from "../lib/useTitle";
 
 const RANK: Record<Status, number> = { critical: 0, warning: 1, healthy: 2 };
 const GLYPH_WIDE = 260;
 const GLYPH_NARROW = 150;
 
 export function FleetPage() {
+  useTitle("Overview");
   const fleet = useFleet();
   return (
     <QueryState query={fleet} subject="the overview">
