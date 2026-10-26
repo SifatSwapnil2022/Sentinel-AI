@@ -8,13 +8,18 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 import numpy as np
 
 from ._json import SCHEMA_VERSION, r
+from .days import DayData
+from .incidents import Episode, investigate
 from .monitors import Monitors
+
+INVESTIGATION_MAX_DAYS = 14
+"""An incident's investigation covers at most this many days, ending on its last bad day."""
 
 SEVERITY_RANK = {"critical": 2, "warning": 1}
 
@@ -36,25 +41,29 @@ def model_document(
     monitors: Monitors,
     days: Sequence[dict[str, Any]],
     incident_ids: Sequence[str],
+    segments: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """The model page: daily metrics, per-feature drift series, reference facts."""
+    """The model page: daily metrics, per-feature drift and missing values, segments."""
     if not days:
         raise ValueError(f"model {info.id} has no computed days")
     latest = days[-1]
     features = []
     for name, ref in monitors.columns.items():
-        stats = latest["features"].get(name)
         series = [
             {
                 "date": d["date"],
-                "statistic": s["statistic"],
-                "drifted": s["drifted"],
-                "psi": s["psi"],
+                "statistic": None if s is None else s["statistic"],
+                "drifted": False if s is None else s["drifted"],
+                "psi": None if s is None else s["psi"],
+                "nullRate": _null_rate(d, name),
             }
             for d in days
-            if (s := d["features"].get(name)) is not None
+            for s in [d["features"].get(name)]
         ]
-        if stats is None or not series:
+        # The latest day a drift test could run; a feature missing entirely today keeps its
+        # last statistics and shows today's missing share.
+        stats = next((d["features"][name] for d in reversed(days) if d["features"].get(name)), None)
+        if stats is None:
             continue
         features.append(
             {
@@ -64,7 +73,13 @@ def model_document(
                 "threshold": ref.threshold,
                 "isPValue": ref.method.is_p_value,
                 "series": series,
-                "latest": {k: stats[k] for k in ("statistic", "drifted", "psi", "nullRate")},
+                "latest": {
+                    "statistic": stats["statistic"],
+                    "drifted": stats["drifted"],
+                    "psi": stats["psi"],
+                    "nullRate": _null_rate(latest, name) or 0.0,
+                },
+                "referenceNullRate": r(ref.null_rate),
                 "histogram": stats["histogram"],
             }
         )
@@ -79,8 +94,14 @@ def model_document(
         **monitors.summary(),
         "days": [_public_day(d) for d in days],
         "features": features,
+        "segments": segments or {"window": {"to": latest["date"], "rows": 0}, "rows": []},
         "alertIds": list(incident_ids),
     }
+
+
+def _null_rate(day: dict[str, Any], name: str) -> float | None:
+    quality = (day.get("dataQuality") or {}).get(name)
+    return None if quality is None else quality["nullRate"]
 
 
 def model_summary(
@@ -129,8 +150,9 @@ def incident_document(
     investigation: dict[str, Any],
     latest_day: dict[str, Any],
     monitors: Monitors,
+    resolved_on: date | None = None,
 ) -> dict[str, Any]:
-    """An incident page: what fired, its investigation, and features drifting now."""
+    """An incident page: what fired, its investigation, and the features drifting at its end."""
     severity = "critical" if any(s.severity == "critical" for s in signals) else lead.severity
     # Iterate in the schema's column order: ``latest_day`` may have been through a store that
     # doesn't keep key order.
@@ -152,7 +174,9 @@ def incident_document(
         "kind": lead.kind.value,
         "title": lead.title,
         "severity": severity,
+        "status": "open" if resolved_on is None else "resolved",
         "openedOn": opened_on.isoformat(),
+        "resolvedOn": None if resolved_on is None else resolved_on.isoformat(),
         **investigation,
         "window": {
             "from": window_from.isoformat(),
@@ -164,9 +188,52 @@ def incident_document(
     }
 
 
+def investigation_window(episode: Episode) -> tuple[date, date]:
+    """Days an incident's investigation covers.
+
+    From the day before it opened to its last day of trouble, at most
+    ``INVESTIGATION_MAX_DAYS`` long.
+    """
+    end = episode.last_day
+    start = max(
+        episode.opened_on - timedelta(days=1), end - timedelta(days=INVESTIGATION_MAX_DAYS - 1)
+    )
+    return start, end
+
+
+def episode_document(
+    incident_id: str,
+    model_id: str,
+    episode: Episode,
+    span: DayData,
+    day_docs: dict[str, dict[str, Any]],
+    monitors: Monitors,
+) -> dict[str, Any]:
+    """The incident page for an episode.
+
+    ``span`` holds the predictions of its investigation window; ``day_docs`` the day
+    documents by ISO date.
+    """
+    start, end = investigation_window(episode)
+    return incident_document(
+        incident_id=incident_id,
+        model_id=model_id,
+        signals=episode.signals,
+        lead=episode.lead,
+        opened_on=episode.opened_on,
+        window_from=start,
+        window_to=end,
+        investigation=investigate(monitors, episode.lead.kind, span),
+        latest_day=day_docs[end.isoformat()],
+        monitors=monitors,
+        resolved_on=episode.resolved_on,
+    )
+
+
 def incident_ref(incident: dict[str, Any]) -> dict[str, Any]:
     """The short form listed on the overview."""
-    return {k: incident[k] for k in ("id", "modelId", "kind", "title", "severity", "openedOn")}
+    keys = ("id", "modelId", "kind", "title", "severity", "status", "openedOn", "resolvedOn")
+    return {k: incident[k] for k in keys}
 
 
 def fleet_document(
@@ -174,18 +241,25 @@ def fleet_document(
     window_days: int,
     summaries: Sequence[dict[str, Any]],
     open_incidents: Sequence[dict[str, Any]],
+    resolved_incidents: Sequence[dict[str, Any]] = (),
 ) -> dict[str, Any]:
-    """The overview: every model and every open incident, critical first."""
+    """The overview: every model, open incidents (critical first) and recently resolved ones."""
     refs = sorted(
         (incident_ref(i) for i in open_incidents),
         key=lambda a: (a["severity"] != "critical", a["openedOn"], a["id"]),
+    )
+    resolved = sorted(
+        (incident_ref(i) for i in resolved_incidents),
+        key=lambda a: (a["resolvedOn"], a["id"]),
+        reverse=True,
     )
     return {
         "schemaVersion": SCHEMA_VERSION,
         "today": today.isoformat(),
         "windowDays": window_days,
-        "models": list(summaries),
+        "models": sorted(summaries, key=lambda m: (m["team"], m["id"])),
         "alerts": refs,
+        "resolved": resolved,
     }
 
 

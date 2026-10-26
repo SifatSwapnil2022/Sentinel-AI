@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     """Serve the read endpoints without a key, for a public demo dashboard."""
     cors_origins: list[str] = Field(default_factory=list)
 
-    window_days: int = Field(default=30, ge=7, le=90)
+    window_days: int = Field(default=90, ge=7, le=90)
     """Days shown on the dashboard."""
 
     worker_batch: int = Field(default=50, ge=1)

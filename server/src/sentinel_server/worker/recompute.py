@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
@@ -22,15 +22,17 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sentinel_server.analysis import (
     CONCEPT_WINDOW_DAYS,
     DayData,
+    Episode,
     ModelInfo,
     Monitors,
     compute_day,
     concat,
-    evaluate,
-    incident_document,
-    investigate,
+    episode_document,
+    episodes,
+    investigation_window,
     model_document,
     model_summary,
+    segment_table,
 )
 from sentinel_server.db.models import (
     DailyWindow,
@@ -49,8 +51,8 @@ log = logging.getLogger(__name__)
 CHUNK_DAYS = 14
 """Dirty days are loaded in chunks spanning at most this many days, plus the label lookback."""
 
-INVESTIGATION_MAX_DAYS = 14
-"""An incident's investigation covers at most this many days, bounding its cost."""
+SEGMENT_DAYS = 7
+"""The model page's segments compare the reference with the last week of traffic."""
 
 
 @dataclass(frozen=True)
@@ -209,7 +211,7 @@ async def refresh_documents(
     window_days: int,
     today: date,
 ) -> None:
-    """Rebuild a model's page, overview row and incident from its stored day documents."""
+    """Rebuild a model's page, overview row and incidents from its stored day documents."""
     first = today - timedelta(days=window_days - 1)
     docs = list(
         await session.scalars(
@@ -218,11 +220,24 @@ async def refresh_documents(
             .order_by(DailyWindow.day)
         )
     )
-    open_incident = await _sync_incident(session, model, version, monitors, docs)
     if not docs:
+        for incident in await _open_incidents(session, model.id):
+            await _resolve(session, incident, today)
         await session.execute(delete(ModelDocument).where(ModelDocument.model_id == model.id))
         return
 
+    incidents = await _reconcile_incidents(session, model, version, monitors, docs)
+    latest = date.fromisoformat(docs[-1]["date"])
+    recent = await load_days(
+        session, version.id, monitors.schema, latest - timedelta(days=SEGMENT_DAYS - 1), latest
+    )
+    segments = (
+        await asyncio.to_thread(
+            segment_table, monitors, concat([recent[d] for d in sorted(recent)])
+        )
+        if recent
+        else None
+    )
     info = ModelInfo(
         id=model.id,
         name=model.name,
@@ -231,15 +246,9 @@ async def refresh_documents(
         description=model.description,
         label_delay_days=model.label_delay_days,
     )
-    incident_ids = list(
-        await session.scalars(
-            select(Incident.id)
-            .where(Incident.model_id == model.id, Incident.version_id == version.id)
-            .order_by(Incident.opened_on.desc(), Incident.id.desc())
-        )
-    )
-    summary = model_summary(info, monitors, docs, [open_incident] if open_incident else [])
-    doc = model_document(info, monitors, docs, incident_ids)
+    open_docs = [i for i in incidents if i["status"] == "open"]
+    summary = model_summary(info, monitors, docs, open_docs)
+    doc = model_document(info, monitors, docs, [i["id"] for i in reversed(incidents)], segments)
     stmt = insert(ModelDocument).values(model_id=model.id, summary=summary, doc=doc)
     await session.execute(
         stmt.on_conflict_do_update(
@@ -253,90 +262,130 @@ async def refresh_documents(
     )
 
 
-async def _sync_incident(
+async def _open_incidents(session: AsyncSession, model_id: str) -> list[Incident]:
+    return list(
+        await session.scalars(
+            select(Incident).where(Incident.model_id == model_id, Incident.status == "open")
+        )
+    )
+
+
+def _overlaps(incident: Incident, episode: Episode) -> bool:
+    return incident.opened_on <= episode.last_day and (
+        incident.resolved_on is None or incident.resolved_on > episode.opened_on
+    )
+
+
+async def _reconcile_incidents(
     session: AsyncSession,
     model: Model,
     version: _Version,
     monitors: Monitors,
     docs: list[dict[str, Any]],
-) -> dict[str, Any] | None:
-    """Open, update or resolve the model's incident to match its days.
+) -> list[dict[str, Any]]:
+    """Make stored incidents match the episodes in the model's days.
 
-    Returns the open incident's document, if any.
+    Returns their documents, oldest first.
 
-    An incident covers one episode, evaluated on the days since the previous incident resolved
-    (``analysis.evaluate`` decides when one opens and resolves). An episode that had already
-    ended when first evaluated, as in a backfill, opens no incident.
+    Episodes are recomputed from the day documents every time (``analysis.episodes``), so a
+    backfill, late labels or a worker restart all converge on the same history. Each episode
+    keeps the incident it overlaps, so ids are stable. Resolutions are applied before anything
+    opens, because a model has at most one open incident.
     """
-    current = await session.scalar(
-        select(Incident).where(Incident.model_id == model.id, Incident.status == "open")
-    )
-    if current is not None and (current.version_id != version.id or not docs):
-        # The model moved to another version, or has had no traffic for the whole window.
-        await _resolve(session, current, datetime.now(UTC).date())
-        current = None
-    if not docs:
-        return None
-
-    since = await session.scalar(
-        select(Incident.resolved_on)
-        .where(Incident.model_id == model.id, Incident.status == "resolved")
-        .order_by(Incident.resolved_on.desc())
-        .limit(1)
-    )
-    days = [d for d in docs if since is None or date.fromisoformat(d["date"]) > since]
-    episode = evaluate(monitors.reference_accuracy, days) if days else None
     latest = date.fromisoformat(docs[-1]["date"])
-    if episode is None or episode.resolved_on is not None:
-        if current is not None:
-            ended = episode.resolved_on if episode is not None else None
-            await _resolve(session, current, ended or latest)
-        return None
+    window_start = date.fromisoformat(docs[0]["date"])
+    by_date = {d["date"]: d for d in docs}
+    found = episodes(monitors.reference_accuracy, docs)
 
-    opened = current.opened_on if current is not None else episode.opened_on
-    window_from = max(
-        opened - timedelta(days=1), latest - timedelta(days=INVESTIGATION_MAX_DAYS - 1)
-    )
-    data = await load_days(session, version.id, monitors.schema, window_from, latest)
-    span = concat([data[d] for d in sorted(data)])
-    investigation = await asyncio.to_thread(investigate, monitors, episode.lead.kind, span)
-
-    incident_id = current.id if current is not None else await _next_incident_id(session, model.id)
-    doc = incident_document(
-        incident_id=incident_id,
-        model_id=model.id,
-        signals=episode.signals,
-        lead=episode.lead,
-        opened_on=opened,
-        window_from=window_from,
-        window_to=latest,
-        investigation=investigation,
-        latest_day=docs[-1],
-        monitors=monitors,
-    )
-    if current is None:
-        session.add(
-            Incident(
-                id=incident_id,
-                model_id=model.id,
-                version_id=version.id,
-                status="open",
-                opened_on=opened,
-                doc=doc,
-            )
+    stored = list(
+        await session.scalars(
+            select(Incident)
+            .where(Incident.model_id == model.id)
+            .order_by(Incident.opened_on, Incident.id)
         )
-        log.warning("incident %s opened: %s", incident_id, doc["title"])
-    else:
-        current.doc = doc
-        current.updated_at = datetime.now(UTC)
-    await session.flush()
-    return doc
+    )
+    for incident in stored:
+        if incident.version_id != version.id and incident.status == "open":
+            # The model moved to another version: that version's episode is over.
+            await _resolve(session, incident, latest)
+    mine = [i for i in stored if i.version_id == version.id]
+
+    matches: list[Incident | None] = []
+    used: set[str] = set()
+    for episode in found:
+        match = next((i for i in mine if i.id not in used and _overlaps(i, episode)), None)
+        if match is not None:
+            used.add(match.id)
+        matches.append(match)
+    for incident in mine:
+        if incident.id not in used and incident.status == "open":
+            # Revised days no longer support it (late labels, say).
+            await _resolve(session, incident, latest)
+
+    # Resolved episodes first, so the one open episode is applied last.
+    order = sorted(range(len(found)), key=lambda k: found[k].resolved_on is None)
+    documents: dict[int, dict[str, Any]] = {}
+    for k in order:
+        episode, match = found[k], matches[k]
+        # An episode that began before the window keeps the start the incident recorded.
+        opened = (
+            match.opened_on
+            if match is not None and match.opened_on < window_start
+            else episode.opened_on
+        )
+        unchanged = (
+            match is not None
+            and match.status == "resolved"
+            and episode.resolved_on == match.resolved_on
+            and opened == match.opened_on
+        )
+        if unchanged:
+            assert match is not None
+            documents[k] = match.doc
+            continue
+        incident_id = match.id if match is not None else await _next_incident_id(session, model.id)
+        start, end = investigation_window(episode)
+        data = await load_days(session, version.id, monitors.schema, start, end)
+        span = concat([data[d] for d in sorted(data)])
+        doc = await asyncio.to_thread(
+            episode_document,
+            incident_id,
+            model.id,
+            replace(episode, opened_on=opened),
+            span,
+            by_date,
+            monitors,
+        )
+        status = doc["status"]
+        if match is None:
+            session.add(
+                Incident(
+                    id=incident_id,
+                    model_id=model.id,
+                    version_id=version.id,
+                    status=status,
+                    opened_on=opened,
+                    resolved_on=episode.resolved_on,
+                    doc=doc,
+                )
+            )
+            if status == "open":
+                log.warning("incident %s opened: %s", incident_id, doc["title"])
+        else:
+            match.status = status
+            match.opened_on = opened
+            match.resolved_on = episode.resolved_on
+            match.doc = doc
+            match.updated_at = datetime.now(UTC)
+        await session.flush()
+        documents[k] = doc
+    return [documents[k] for k in range(len(found))]
 
 
 async def _resolve(session: AsyncSession, incident: Incident, on: date) -> None:
     incident.status = "resolved"
     incident.resolved_on = on
-    incident.doc = {**incident.doc, "resolvedOn": on.isoformat()}
+    incident.doc = {**incident.doc, "status": "resolved", "resolvedOn": on.isoformat()}
     incident.updated_at = datetime.now(UTC)
     await session.flush()
     log.info("incident %s resolved on %s", incident.id, on)

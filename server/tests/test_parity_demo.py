@@ -26,8 +26,10 @@ sys.path.insert(0, str(DEMO))
 build_fixtures = pytest.importorskip("build_fixtures")
 scenarios = pytest.importorskip("scenarios")
 
-# Ingest refuses timestamps in the future, so the scenario ends yesterday.
+# Ingest refuses timestamps in the future, so the scenario ends yesterday. Thirty days keep the
+# test quick; scenarios are timed back from the last day, so every story still fits.
 TODAY = datetime.now(UTC).date() - timedelta(days=1)
+DAYS = 30
 
 
 def _jsonable(frame: pd.DataFrame) -> list[dict[str, Any]]:
@@ -44,14 +46,16 @@ def _normalise(doc: Any) -> Any:
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("model_id", ["credit-risk", "claims-triage"])
+@pytest.mark.parametrize(
+    "model_id", ["credit-risk", "claims-triage", "upsell-propensity", "sme-credit"]
+)
 async def test_live_pipeline_matches_static_demo(
     client: httpx.AsyncClient, keys: Keys, worker: Worker, model_id: str
 ) -> None:
     index = next(i for i, m in enumerate(scenarios.MODELS) if m.id == model_id)
     spec = scenarios.MODELS[index]
     trained, data = build_fixtures.prepare(
-        spec, np.random.default_rng(build_fixtures.SEED + index), TODAY
+        spec, np.random.default_rng(build_fixtures.SEED + index), TODAY, DAYS
     )
     summary, model_doc, incidents = build_fixtures.documents(spec, trained, data)
 
@@ -118,7 +122,9 @@ async def test_live_pipeline_matches_static_demo(
     fleet = (await client.get("/v1/fleet", headers=keys.read)).json()
     assert fleet["models"] == [_normalise(summary)]
 
-    assert len(incidents) == 1
-    (expected,) = incidents
-    live_incident = (await client.get(f"/v1/incidents/{expected['id']}", headers=keys.read)).json()
-    assert live_incident == _normalise(expected)
+    assert incidents, "the scenario should cause at least one incident"
+    for expected in incidents:
+        live = (await client.get(f"/v1/incidents/{expected['id']}", headers=keys.read)).json()
+        assert live == _normalise(expected)
+    daily = (await client.get("/v1/fleet/daily", headers=keys.read)).json()
+    assert daily == _normalise(build_fixtures.fleet_daily([model_doc]))

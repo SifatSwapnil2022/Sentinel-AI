@@ -1,0 +1,9 @@
+model_id,model_name,team,version,description,label_delay_days,reference_rows,reference_accuracy,reference_precision,reference_recall,reference_f1,status,open_incidents
+credit-risk,credit-risk,Lending,v3,Predicts whether a new credit card applicant will default within 6 months.,14,20000,0.7647,0.5296,0.2479,0.3377,critical,1
+fraud-screen,fraud-screen,Payments,v5,Scores card transactions for fraud before authorisation.,45,20000,0.8923,0.4583,0.0882,0.1479,critical,1
+churn-predictor,churn-predictor,Growth,v2,Flags mobile subscribers likely to leave in the next 30 days.,30,20000,0.8089,0.5192,0.2229,0.3118,healthy,0
+claims-triage,claims-triage,Insurance ops,v1,Routes motor insurance claims to fast-track or manual review.,10,20000,0.7394,0.4909,0.1148,0.1861,warning,1
+sme-credit,sme-credit,Lending,v2,Scores small-business loan applications for default within 12 months.,21,20000,0.7746,0.5263,0.1575,0.2424,warning,1
+wallet-fraud,wallet-fraud,Payments,v7,Scores mobile wallet transfers and cash-outs for fraud in real time.,20,20000,0.915,0.4226,0.0792,0.1335,healthy,0
+upsell-propensity,upsell-propensity,Growth,v4,Picks prepaid subscribers likely to accept a bigger data pack this week.,7,20000,0.7784,0.6375,0.3598,0.46,critical,1
+policy-lapse,policy-lapse,Insurance ops,v3,Predicts which life policies will lapse at the next premium date.,12,20000,0.7489,0.5474,0.1988,0.2917,healthy,0

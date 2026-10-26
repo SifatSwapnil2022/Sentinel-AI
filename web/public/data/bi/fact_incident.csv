@@ -1,0 +1,7 @@
+incident_id,model_id,kind,title,severity,status,opened_on,resolved_on,days_open,metric_basis,metric_reference,metric_current,top_segment
+credit-risk-1,credit-risk,concept_drift,Measured accuracy fell outside the estimate,critical,open,2026-10-18,,7,measured,0.7699,0.736,division = Khulna
+fraud-screen-1,fraud-screen,estimate_drop,Estimated accuracy dropped,critical,open,2026-10-13,,12,estimated,0.8923,0.8046,
+claims-triage-1,claims-triage,multivariate,Feature relationships changed,warning,open,2026-10-20,,5,estimated,0.7395,0.7311,policy_value_bdt = < 399k and garage_network = partner
+sme-credit-1,sme-credit,input_drift,Input distributions shifted,warning,open,2026-10-16,,9,estimated,0.7754,0.7815,
+upsell-propensity-1,upsell-propensity,data_quality,Feature values went missing,critical,open,2026-10-17,,8,estimated,0.7786,0.8168,
+policy-lapse-1,policy-lapse,estimate_drop,Estimated accuracy dropped,critical,resolved,2026-08-31,2026-09-17,18,estimated,0.7503,0.6761,payment_method = mfs

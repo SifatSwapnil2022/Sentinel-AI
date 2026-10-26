@@ -1,0 +1,14 @@
+incident_id,kind,severity,fired_on
+credit-risk-1,concept_drift,critical,2026-10-18
+fraud-screen-1,estimate_drop,critical,2026-10-13
+fraud-screen-1,multivariate,warning,2026-10-13
+fraud-screen-1,input_drift,warning,2026-10-13
+fraud-screen-1,concept_drift,critical,2026-10-16
+claims-triage-1,multivariate,warning,2026-10-20
+sme-credit-1,input_drift,warning,2026-10-16
+upsell-propensity-1,data_quality,critical,2026-10-17
+upsell-propensity-1,multivariate,warning,2026-10-17
+upsell-propensity-1,concept_drift,critical,2026-10-20
+policy-lapse-1,estimate_drop,critical,2026-08-31
+policy-lapse-1,multivariate,warning,2026-08-31
+policy-lapse-1,input_drift,warning,2026-09-01

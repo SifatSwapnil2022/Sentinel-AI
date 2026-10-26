@@ -7,6 +7,7 @@ from datetime import UTC, date, datetime, timedelta
 import httpx
 import numpy as np
 
+from sentinel_server.analysis._json import SCHEMA_VERSION
 from support import (
     Keys,
     Worker,
@@ -116,7 +117,8 @@ async def test_documents_404_until_data(
     assert (await client.get("/v1/incidents/loans-1", headers=keys.read)).status_code == 404
     fleet = (await client.get("/v1/fleet", headers=keys.read)).json()
     assert fleet["models"] == []
-    assert fleet["schemaVersion"] == 1
+    assert fleet["schemaVersion"] == SCHEMA_VERSION
+    assert fleet["resolved"] == []
 
 
 async def test_predictions_before_fit_are_computed_after(

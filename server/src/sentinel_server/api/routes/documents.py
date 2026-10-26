@@ -7,13 +7,21 @@ the static demo's JSON.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Query, Response
+from fastapi.responses import PlainTextResponse
 from sqlalchemy import select
 
-from sentinel_server.analysis import fleet_document, incident_ref
+from sentinel_server.analysis import (
+    TABLES,
+    bi_tables,
+    fleet_daily,
+    fleet_document,
+    incident_ref,
+    to_csv,
+)
 from sentinel_server.contracts import Slug
 from sentinel_server.db.models import Incident, ModelDocument
 
@@ -28,17 +36,77 @@ CACHE = "private, max-age=15"
 
 @router.get("/fleet")
 async def fleet(session: Session, settings: SettingsDep, response: Response) -> dict[str, Any]:
-    """Every model's overview row and every open incident."""
-    summaries = list(
-        await session.scalars(select(ModelDocument.summary).order_by(ModelDocument.model_id))
-    )
-    incidents = list(
+    """Every model's overview row, open incidents, and those resolved within the window."""
+    response.headers["Cache-Control"] = CACHE
+    return await _fleet(session, settings.window_days)
+
+
+async def _fleet(session: Session, window_days: int) -> dict[str, Any]:
+    today = datetime.now(UTC).date()
+    summaries = list(await session.scalars(select(ModelDocument.summary)))
+    open_docs = list(
         await session.scalars(
             select(Incident.doc).where(Incident.status == "open").order_by(Incident.opened_on)
         )
     )
+    resolved_docs = list(
+        await session.scalars(
+            select(Incident.doc).where(
+                Incident.status == "resolved",
+                Incident.resolved_on >= today - timedelta(days=window_days - 1),
+            )
+        )
+    )
+    return fleet_document(today, window_days, summaries, open_docs, resolved_docs)
+
+
+async def _model_docs(session: Session) -> list[dict[str, Any]]:
+    return list(await session.scalars(select(ModelDocument.doc).order_by(ModelDocument.model_id)))
+
+
+@router.get("/fleet/daily")
+async def daily(session: Session, response: Response) -> dict[str, Any]:
+    """One row per model per day: the facts behind slicers, heatmaps and the explore view."""
     response.headers["Cache-Control"] = CACHE
-    return fleet_document(datetime.now(UTC).date(), settings.window_days, summaries, incidents)
+    return fleet_daily(await _model_docs(session))
+
+
+@router.get(
+    "/export/{table}.csv",
+    response_class=PlainTextResponse,
+    responses={200: {"content": {"text/csv": {}}}},
+)
+async def export(table: str, session: Session, settings: SettingsDep) -> PlainTextResponse:
+    """One table of the BI star schema as CSV, for Power BI, Tableau or a spreadsheet.
+
+    Tables: ``dim_model``, ``dim_date``, ``fact_model_day``, ``fact_feature_day``,
+    ``fact_segment``, ``fact_incident`` and ``fact_incident_signal``; columns in ``docs/bi.md``.
+    """
+    if table not in TABLES:
+        raise ApiError(
+            404,
+            "unknown-table",
+            "Unknown table",
+            f"No export table '{table}'. Tables: {', '.join(TABLES)}.",
+        )
+    fleet_doc = await _fleet(session, settings.window_days)
+    window_start = datetime.now(UTC).date() - timedelta(days=settings.window_days - 1)
+    incidents = list(
+        await session.scalars(
+            select(Incident.doc)
+            .where((Incident.status == "open") | (Incident.resolved_on >= window_start))
+            .order_by(Incident.opened_on, Incident.id)
+        )
+    )
+    tables = bi_tables(fleet_doc, await _model_docs(session), incidents)
+    return PlainTextResponse(
+        to_csv(tables[table]),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Cache-Control": CACHE,
+            "Content-Disposition": f'inline; filename="sentinel_{table}.csv"',
+        },
+    )
 
 
 @router.get("/models/{model_id}")
@@ -67,22 +135,15 @@ async def incidents(
     limit: Annotated[int, Query(ge=1, le=500)] = 100,
 ) -> list[dict[str, Any]]:
     """Incidents, most recently opened first, in their short form."""
-    query = select(Incident.doc, Incident.status, Incident.resolved_on)
+    query = select(Incident.doc)
     if status != "all":
         query = query.where(Incident.status == status)
     if model_id is not None:
         query = query.where(Incident.model_id == model_id)
-    rows = await session.execute(
+    docs = await session.scalars(
         query.order_by(Incident.opened_on.desc(), Incident.id.desc()).limit(limit)
     )
-    return [
-        {
-            **incident_ref(doc),
-            "status": state,
-            "resolvedOn": resolved.isoformat() if resolved else None,
-        }
-        for doc, state, resolved in rows
-    ]
+    return [incident_ref(doc) for doc in docs]
 
 
 @router.get("/incidents/{incident_id}")
