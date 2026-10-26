@@ -106,7 +106,11 @@ def compute_day(monitors: Monitors, span: Sequence[DayData]) -> dict[str, Any] |
         "measured": _measured(day),
         "labelCoverage": r(float(day.labelled.mean())),
         "labelCheck": check,
-        "conceptFlag": None if check is None else check["flagged"],
+        # One-sided: measured accuracy *below* the estimate's band is a failure to act on;
+        # a model doing better than estimated is not. ``labelCheck.flagged`` stays two-sided.
+        "conceptFlag": None
+        if check is None
+        else check["flagged"] and check["measured"] < check["lower"],
         "multivariate": {
             "error": r(mv.reconstruction_error),
             "lower": r(mv.lower),
@@ -114,6 +118,15 @@ def compute_day(monitors: Monitors, span: Sequence[DayData]) -> dict[str, Any] |
             "drifted": mv.drifted,
         },
         "p95LatencyMs": _p95(day.latency_ms),
+        # Kept apart from the drift stats so a day on which a feature is entirely missing,
+        # where no drift test can run, still reports it.
+        "dataQuality": {
+            name: {
+                "nullRate": r(float(day.frame[name].isna().mean())),
+                "referenceNullRate": r(ref.null_rate),
+            }
+            for name, ref in monitors.columns.items()
+        },
         "features": {
             name: _feature_stats(ref, monitors.ref_frame[name], day.frame[name])
             for name, ref in monitors.columns.items()

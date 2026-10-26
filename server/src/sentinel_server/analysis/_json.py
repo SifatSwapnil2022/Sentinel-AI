@@ -6,7 +6,7 @@ from typing import Any
 
 import numpy as np
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 """Version of the document shapes served to the dashboard (``web/src/data/schema.ts``)."""
 
 

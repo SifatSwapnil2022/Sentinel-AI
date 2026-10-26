@@ -35,10 +35,19 @@ evidence of recovery rather than of labels not having arrived yet. Opening takes
 resolving seven, so an effect near the detection limit doesn't open and close repeatedly."""
 
 
+MISSING_JUMP = 0.05
+"""A feature whose share of missing values rises this far above its reference rate (5 points)
+fails the data-quality rule."""
+
+MISSING_CRITICAL = 0.25
+"""Missing values this far above reference make the data-quality signal critical."""
+
+
 class SignalKind(StrEnum):
-    """The four ways a model can go wrong that Sentinel detects."""
+    """The ways a model can go wrong that Sentinel detects."""
 
     CONCEPT_DRIFT = "concept_drift"
+    DATA_QUALITY = "data_quality"
     ESTIMATE_DROP = "estimate_drop"
     MULTIVARIATE = "multivariate"
     INPUT_DRIFT = "input_drift"
@@ -46,6 +55,7 @@ class SignalKind(StrEnum):
 
 TITLES = {
     SignalKind.CONCEPT_DRIFT: "Measured accuracy fell outside the estimate",
+    SignalKind.DATA_QUALITY: "Feature values went missing",
     SignalKind.ESTIMATE_DROP: "Estimated accuracy dropped",
     SignalKind.MULTIVARIATE: "Feature relationships changed",
     SignalKind.INPUT_DRIFT: "Input distributions shifted",
@@ -53,11 +63,13 @@ TITLES = {
 
 PRIORITY = (
     SignalKind.CONCEPT_DRIFT,
+    SignalKind.DATA_QUALITY,
     SignalKind.ESTIMATE_DROP,
     SignalKind.MULTIVARIATE,
     SignalKind.INPUT_DRIFT,
 )
-"""Tie-break for which signal leads an incident: the one that says most about what to do."""
+"""Tie-break for which signal leads an incident: the one that says most about what to do. A
+data-quality problem leads an accuracy drop it causes, because fixing the pipeline is the fix."""
 
 
 @dataclass(frozen=True)
@@ -83,71 +95,123 @@ class Signal:
         }
 
 
-def rule_holds(reference_accuracy: float, day: dict[str, Any]) -> bool:
-    """Whether any alert rule's condition holds on one day (before the sustained-days check)."""
-    upper = day["estimate"]["accuracy"]["upper"]
-    drifted = sum(bool(f and f["drifted"]) for f in day["features"].values())
-    return (
-        (upper is not None and upper < reference_accuracy)
-        or day["conceptFlag"] is True
-        or bool(day["multivariate"]["drifted"])
-        or drifted >= 2
+def missing_jump(day: dict[str, Any]) -> float:
+    """The largest rise in a feature's share of missing values over its reference rate."""
+    quality = day.get("dataQuality") or {}
+    return max(
+        (q["nullRate"] - q["referenceNullRate"] for q in quality.values()),
+        default=0.0,
     )
 
 
+def rules_holding(reference_accuracy: float, day: dict[str, Any]) -> set[SignalKind]:
+    """Which alert rules' conditions hold on one day, before the sustained-days check."""
+    held: set[SignalKind] = set()
+    upper = day["estimate"]["accuracy"]["upper"]
+    if upper is not None and upper < reference_accuracy:
+        held.add(SignalKind.ESTIMATE_DROP)
+    if day["conceptFlag"] is True:
+        held.add(SignalKind.CONCEPT_DRIFT)
+    if day["multivariate"]["drifted"]:
+        held.add(SignalKind.MULTIVARIATE)
+    if sum(bool(f and f["drifted"]) for f in day["features"].values()) >= 2:
+        held.add(SignalKind.INPUT_DRIFT)
+    if missing_jump(day) > MISSING_JUMP:
+        held.add(SignalKind.DATA_QUALITY)
+    return held
+
+
+def rule_holds(reference_accuracy: float, day: dict[str, Any]) -> bool:
+    """Whether any alert rule's condition holds on one day."""
+    return bool(rules_holding(reference_accuracy, day))
+
+
 def detect_signals(reference_accuracy: float, days: Sequence[dict[str, Any]]) -> list[Signal]:
-    """Every rule that fired in ``days`` (day documents in date order), with when it fired."""
+    """Every rule that fired in ``days`` (day documents in date order), with when it first did."""
+    held = [rules_holding(reference_accuracy, d) for d in days]
     found: list[Signal] = []
-    dates = [date.fromisoformat(d["date"]) for d in days]
-
-    upper = [d["estimate"]["accuracy"]["upper"] for d in days]
-    if (
-        i := _first_sustained([u is not None and u < reference_accuracy for u in upper])
-    ) is not None:
-        values = [d["estimate"]["accuracy"]["value"] for d in days[i:]]
-        worst = min(v for v in values if v is not None)
-        severity = "critical" if worst < reference_accuracy - CRITICAL_DROP else "warning"
-        found.append(Signal(SignalKind.ESTIMATE_DROP, severity, dates[i]))
-
-    if (i := _first_sustained([d["conceptFlag"] is True for d in days])) is not None:
-        found.append(Signal(SignalKind.CONCEPT_DRIFT, "critical", dates[i]))
-
-    if (i := _first_sustained([d["multivariate"]["drifted"] for d in days])) is not None:
-        found.append(Signal(SignalKind.MULTIVARIATE, "warning", dates[i]))
-
-    drifted = [sum(bool(f and f["drifted"]) for f in d["features"].values()) for d in days]
-    if (i := _first_sustained([c >= 2 for c in drifted])) is not None:
-        found.append(Signal(SignalKind.INPUT_DRIFT, "warning", dates[i]))
+    for kind in PRIORITY:
+        i = _first_sustained([kind in h for h in held])
+        if i is None:
+            continue
+        rest = days[i:]
+        if kind is SignalKind.ESTIMATE_DROP:
+            worst = min(d["estimate"]["accuracy"]["value"] for d in rest)
+            severity = "critical" if worst < reference_accuracy - CRITICAL_DROP else "warning"
+        elif kind is SignalKind.DATA_QUALITY:
+            severity = "critical" if max(map(missing_jump, rest)) > MISSING_CRITICAL else "warning"
+        elif kind is SignalKind.CONCEPT_DRIFT:
+            severity = "critical"
+        else:
+            severity = "warning"
+        found.append(Signal(kind, severity, date.fromisoformat(days[i]["date"])))
     return found
 
 
 @dataclass(frozen=True)
 class Episode:
-    """A stretch of trouble: the signals that fired, and when it ended if it has."""
+    """A stretch of trouble: the signals that fired, when it began, and when it ended if it has."""
 
     signals: list[Signal]
     lead: Signal
     opened_on: date
     resolved_on: date | None
     """First day of the closing quiet run, once it has lasted ``QUIET_DAYS_TO_RESOLVE`` days."""
+    last_day: date
+    """Last day of the episode's trouble: the day before ``resolved_on``, or the latest day."""
+
+    @property
+    def severity(self) -> str:
+        """Critical if any of its signals is."""
+        return "critical" if any(s.severity == "critical" for s in self.signals) else "warning"
 
 
-def evaluate(reference_accuracy: float, days: Sequence[dict[str, Any]]) -> Episode | None:
-    """The episode in ``days`` (those since the previous incident resolved), if any rule fired.
+def episodes(reference_accuracy: float, days: Sequence[dict[str, Any]]) -> list[Episode]:
+    """Split a model's days into episodes of trouble, oldest first.
 
-    Shared by the worker and the demo builder, so they open and resolve incidents identically.
+    An episode opens on the day some rule has held for ``SUSTAINED_DAYS`` consecutive days and
+    resolves after ``QUIET_DAYS_TO_RESOLVE`` consecutive days on which no rule holds. The result
+    depends only on the day documents, so the worker and the demo builder agree, and replaying
+    history (a backfill, late labels) reproduces it.
     """
-    signals = detect_signals(reference_accuracy, days)
-    if not signals:
-        return None
-    opened = min(s.fired_on for s in signals)
+    held = [rules_holding(reference_accuracy, d) for d in days]
+    dates = [date.fromisoformat(d["date"]) for d in days]
+    spans: list[tuple[int, int | None]] = []
+    start: int | None = None
     quiet = 0
-    for day in reversed(days):
-        if date.fromisoformat(day["date"]) <= opened or rule_holds(reference_accuracy, day):
-            break
-        quiet += 1
-    resolved = date.fromisoformat(days[-quiet]["date"]) if quiet >= QUIET_DAYS_TO_RESOLVE else None
-    return Episode(signals, lead_signal(signals), opened, resolved)
+    for i, rules in enumerate(held):
+        if start is None:
+            if i >= SUSTAINED_DAYS - 1 and set.intersection(*held[i - SUSTAINED_DAYS + 1 : i + 1]):
+                start, quiet = i, 0
+        elif rules:
+            quiet = 0
+        else:
+            quiet += 1
+            if quiet >= QUIET_DAYS_TO_RESOLVE:
+                spans.append((start, i - quiet + 1))
+                start, quiet = None, 0
+    if start is not None:
+        spans.append((start, None))
+
+    out = []
+    for begin, end in spans:
+        stop = len(days) if end is None else end
+        window = days[max(0, begin - SUSTAINED_DAYS + 1) : stop]
+        signals = [
+            s for s in detect_signals(reference_accuracy, window) if s.fired_on >= dates[begin]
+        ]
+        if not signals:  # cannot happen: the opening day completed a sustained run
+            continue
+        out.append(
+            Episode(
+                signals=signals,
+                lead=lead_signal(signals),
+                opened_on=dates[begin],
+                resolved_on=None if end is None else dates[end],
+                last_day=dates[stop - 1] if end is None else dates[end - 1],
+            )
+        )
+    return out
 
 
 def lead_signal(signals: Sequence[Signal]) -> Signal:
