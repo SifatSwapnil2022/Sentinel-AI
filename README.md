@@ -192,7 +192,7 @@ realized  0.842
   tests cover auth and scopes, every validation path, idempotent retries, labels before
   predictions, dead-lettering, stream trimming, partition retention, incident history and the
   CSV exports. Coverage is 96%.
-- **Web**: 129 unit and component tests, including a contract test that every generated JSON
+- **Web**: 147 unit and component tests, including a contract test that every generated JSON
   file passes the dashboard's schemas, and 126 Playwright tests on desktop and phone: the journey
   from the landing page to an incident's cause, slicers surviving navigation, brushing, CSV
   downloads, keyboard access to charts, no sideways scrolling, and no serious axe violations on
