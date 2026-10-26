@@ -14,11 +14,11 @@
 }
 
 .timeline li + li {
-  border-top: 1px solid var(--hairline);
+  border-top: 1px solid var(--line);
 }
 
 .when {
-  font-family: var(--font-data);
+  font-stretch: var(--stretch-data);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -41,10 +41,10 @@
 
 .conditions li {
   padding: 1px 8px;
-  border: 1px solid var(--hairline-strong);
+  border: 1px solid var(--line-strong);
   border-radius: 4px;
-  background: var(--sheet);
-  font-family: var(--font-data);
+  background: var(--raised);
+  font-stretch: var(--stretch-data);
   white-space: nowrap;
 }
 
@@ -65,7 +65,7 @@
 }
 
 .shareValue {
-  font-family: var(--font-data);
+  font-stretch: var(--stretch-data);
   font-variant-numeric: tabular-nums;
 }
 
@@ -73,7 +73,7 @@
   max-width: 68ch;
   padding: var(--space-3) var(--space-4);
   border-left: 3px solid var(--estimate);
-  background: var(--sheet);
+  background: var(--raised);
 }
 
 .samples td,
@@ -86,4 +86,36 @@
 .samples tr[data-wrong="true"] td:first-child {
   box-shadow: inset 3px 0 0 var(--critical);
   padding-left: var(--space-2);
+}
+
+.state {
+  padding: 1px 8px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--line-strong);
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.state[data-open="true"] {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+.rule {
+  margin: 2px 0 0;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.explain {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--muted);
+  max-width: 100ch;
+}
+
+.more {
+  font-size: var(--text-sm);
+  align-self: center;
+  margin-right: var(--space-2);
 }

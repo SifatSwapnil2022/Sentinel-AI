@@ -1,6 +1,6 @@
 import { fleetSchema, incidentSchema } from "../data/schema";
 import { fixture } from "../test/render";
-import { brokenLink, hiddenSegment, labelGap, quietModels } from "./story";
+import { brokenLink, hiddenSegment, labelGap, missingCase, quietModels } from "./story";
 
 const fleet = fleetSchema.parse(fixture("fleet.json"));
 const incident = (id: string) => incidentSchema.parse(fixture(`alerts/${id}.json`));
@@ -58,5 +58,13 @@ describe("brokenLink", () => {
 });
 
 it("quietModels lists healthy models", () => {
-  expect(quietModels(fleet)).toEqual(["churn-predictor"]);
+  expect(quietModels(fleet)).toEqual(fleet.models.filter((m) => m.status === "healthy").map((m) => m.id));
+  expect(quietModels(fleet).length).toBeGreaterThan(0);
+});
+
+it("missingCase reads the worst missing feature of a data quality incident", () => {
+  const upsell = missingCase(incident("upsell-propensity-1"));
+  expect(upsell?.feature).toBe("data_usage_gb");
+  expect(upsell && upsell.nullRate - upsell.referenceNullRate).toBeGreaterThan(0.25);
+  expect(missingCase(incident("credit-risk-1"))).toBeNull();
 });

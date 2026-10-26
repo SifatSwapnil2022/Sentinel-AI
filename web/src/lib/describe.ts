@@ -28,6 +28,7 @@ export const METHOD_LABELS: Record<DriftMethod, string> = {
 
 export const SIGNAL_LABELS: Record<SignalKind, string> = {
   concept_drift: "Measured accuracy fell outside the estimate",
+  data_quality: "Feature values went missing",
   estimate_drop: "Estimated accuracy dropped",
   multivariate: "Feature relationships changed",
   input_drift: "Input distributions shifted",
@@ -44,6 +45,14 @@ export function summarize(incident: Incident): string {
   const { metric, findings, kind } = incident;
   const top = findings[0];
   const since = shortDate(incident.window.from);
+
+  if (kind === "data_quality") {
+    const worst = incident.missingFeatures[0];
+    const lead = worst
+      ? `${worst.name} arrives empty for ${percent(worst.nullRate, 0)} of predictions, against ${percent(worst.referenceNullRate, 0)} in the reference data.`
+      : "Feature values started arriving empty.";
+    return `${lead} The model never saw missing values in training, so its scores for those rows, and estimates built on them, can't be trusted. Check the pipeline that fills this feature.`;
+  }
 
   if (kind === "multivariate") {
     const pair = incident.correlationChanges[0];

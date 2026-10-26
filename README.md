@@ -1,53 +1,91 @@
 # Sentinel
 
-Monitoring for machine learning models in production, built around the question most tools
-leave open: **how is the model doing before the labels come back?**
+Monitoring for machine learning models in production, for the case where labels arrive late.
+A fraud model finds out it was wrong when the chargeback comes in, a credit model when the loan
+defaults. Until then, the accuracy on a dashboard is weeks old.
 
-Sentinel estimates a classifier's accuracy from its own confidence scores, checks that estimate
-against real accuracy once labels arrive, detects when features drift on their own or in how
-they relate to each other, and points to the segment of traffic behind a drop.
+Sentinel estimates each day's accuracy from the model's calibrated scores, checks that estimate
+against measured accuracy once labels arrive, watches inputs for drift, broken relationships and
+missing values, and points to the segment of traffic behind a drop. The numbers are also
+published as a star schema, with a Power BI project and a Tableau workbook on top.
 
-**Live: [sentinel-ai-sage-gamma.vercel.app](https://sentinel-ai-sage-gamma.vercel.app/)**: the problem, the approach and the evidence, then the
-[dashboard](https://sentinel-ai-sage-gamma.vercel.app/overview) on demo traffic run through the engine.
+**Demo: [sentinel-ai-sage-gamma.vercel.app](https://sentinel-ai-sage-gamma.vercel.app/)**, with
+the [dashboard](https://sentinel-ai-sage-gamma.vercel.app/overview) running on 90 days of
+synthetic traffic for eight models.
 
 [![CI](https://github.com/SifatSwapnil2022/sentinel-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/SifatSwapnil2022/sentinel-ai/actions/workflows/ci.yml)
 
 ## Status
 
-I'm building this in steps.
-
 | Step | Scope | State |
 | --- | --- | --- |
 | 1 | `sentinel_core`: drift, performance estimation, slice root cause | Done |
-| 2 | Dashboard, on demo traffic run through the engine | Done |
+| 2 | Dashboard on demo traffic run through the engine | Done |
 | 3 | Ingestion and query API, storage, background workers, Python SDK | Done |
-| 4 | OpenTelemetry ingestion and LLM evaluation | Planned |
+| 4 | Incident history, data quality check, BI dashboard, star schema exports, Power BI and Tableau | Done |
+| 5 | OpenTelemetry ingestion and LLM evaluation | Planned |
 
-![Overview: every model's estimated accuracy and its likely range, against the accuracy it had at release](docs/images/overview.png)
+![Overview: KPIs, each model's estimated accuracy with its likely range, the incident timeline, a heatmap of accuracy against reference by day, and the models table](docs/images/overview.png)
 
 ## The dashboard
 
-Each model's estimate is drawn as a band (its likely range) with a tick, measured accuracy as a
-hollow ring once labels arrive, and the model's accuracy at release as a rule. On the overview
-that becomes a forest plot: a model whose band sits left of its rule needs a look, before a
-single label has come back.
+| Page | What it shows |
+| --- | --- |
+| Overview | Fleet KPIs with the previous period, each model's estimate against its reference (a forest plot), an incident timeline, and a models × days heatmap of accuracy against reference |
+| Models | Every model by team, with a trend line and its current state |
+| Model | Tabs for performance (estimate, measured accuracy, label check), inputs (drift heatmap, reconstruction error, missing values, distributions), segments, traffic and incidents |
+| Incidents | Open and resolved incidents, with a timeline |
+| Incident | What fired and when, accuracy around the incident, where the change comes from, the segments that cost the most, example rows |
+| Explore | Any daily measure, grouped by model, team or fleet, as lines, stacked bars or period totals |
+| Reports | The CSV tables, the Power BI project and the Tableau workbook |
 
-The demo runs four synthetic models through the real engine, each with a different failure:
+The period, date range, comparison, team, status and search slicers are kept in the address,
+so any view can be shared as a link. Every chart has a table view and a CSV download, dragging
+across the accuracy chart zooms to those dates, and heatmap cells drill into the model or feature
+behind them.
+
+Estimates are always drawn with their likely range (a band), measured accuracy as a ring once
+labels arrive, and the model's accuracy at release as a rule. Design notes:
+[`web/DESIGN.md`](web/DESIGN.md).
+
+<img src="docs/images/model.png" alt="Model page for credit-risk in the light theme: KPIs, the estimated accuracy chart with its likely range and measured rings, and the label check" width="100%">
+
+The demo's eight models each tell a different story:
 
 | Model | What happens | What Sentinel shows |
 | --- | --- | --- |
-| credit-risk | Defaults rise for lower-income applicants in one division; inputs look normal | Measured accuracy leaves the estimate's range; root cause names the division |
-| fraud-screen | Festival traffic: larger payments, more digital goods; labels take 45 days | Estimated accuracy drops before any labels; no single segment to blame, and the traffic shift behind it |
+| credit-risk | Defaults rise for lower-income applicants in one division; inputs look normal | The label check fails; root cause names the division |
+| fraud-screen | Festival traffic: larger payments, more digital goods; labels take 45 days | The estimate drops weeks before labels could show it, with the traffic shift behind it |
 | claims-triage | A new form decouples claim amount from policy value | Feature relationships change while every feature looks normal |
-| churn-predictor | Nothing | Healthy |
+| upsell-propensity | A billing-system change leaves `data_usage_gb` empty for 70% of rows | A data quality incident the next day, while the estimate goes *up* |
+| sme-credit | Eid stock-up: bigger loans and more retail applicants, repayment unchanged | Input drift with a warning, not a critical incident: accuracy holds |
+| policy-lapse | Monsoon floods: more cash payments and missed instalments for about two weeks, then back to normal | An incident that opened and resolved by itself |
+| churn-predictor, wallet-fraud | Nothing | Healthy, with no incident in 90 days |
 
-<img src="docs/images/incident.png" alt="Incident page for credit-risk: a one-sentence summary, the signals that fired, a bridge chart splitting the drop, and the ranked segments" width="100%">
+<img src="docs/images/incident.png" alt="Incident page for upsell-propensity: summary, KPIs, accuracy around the incident, missing values by day, the signals that fired and the bridge chart" width="100%">
 
-Built with React, TypeScript (strict), hand-drawn SVG charts on d3 scales, and runtime schema
-validation on every payload. Light and dark themes, keyboard-readable charts, a table view behind
-every chart, and phone layouts. Design notes: [`web/DESIGN.md`](web/DESIGN.md).
+Built with React 19, TypeScript (strict), SVG charts drawn on d3 scales, React Router, TanStack
+Query, and Zod validation of every payload. Dark and light themes, keyboard-readable charts,
+phone layouts.
 
-<img src="docs/images/model-dark.png" alt="Accuracy chart in dark mode: estimate band, measured rings, reference line and label coverage" width="100%">
+## BI tables, Power BI and Tableau
+
+The numbers behind the dashboard are seven CSV tables in a star schema (two dimensions, five
+facts), built from the same documents the dashboard reads, so a report and the dashboard always
+agree. The demo serves them as static files; a running API serves them at
+`/v1/export/<table>.csv`. Columns are documented in [`docs/bi.md`](docs/bi.md).
+
+- [`bi/powerbi`](bi/powerbi): a Power BI project (PBIP) with a TMDL semantic model
+  (relationships, a date table and weighted measures) and three report pages. A `DataUrl`
+  parameter switches it between the demo and a live API.
+- [`bi/tableau`](bi/tableau): a Tableau workbook with three sheets and a dashboard. The packaged
+  `.twbx` on the Reports page includes the data.
+
+Both are generated by [`bi/build_bi.py`](bi/build_bi.py), so they diff cleanly and stay in step
+with the tables. CI checks they are current and validates the Power BI JSON against Microsoft's
+published schemas. Neither can be opened in CI, so rendering is checked in the desktop tools.
+
+![Explore: predictions per day, stacked by team, with a summary table](docs/images/explore.png)
 
 ## Architecture
 
@@ -72,6 +110,7 @@ flowchart LR
   reads are a primary-key lookup.
 - **Incidents open after two days and resolve after a quiet week**, because the newest days'
   labels are always the last to arrive, and a quiet day early on is often just missing labels.
+  The full history is derived from the daily documents, so resolved incidents stay on record.
 
 The [API reference](docs/api.md) covers endpoints, limits and every error type;
 [ADR 7](docs/adr/0007-server-architecture.md) the trade-offs.
@@ -96,8 +135,13 @@ even when every feature still looks normal by itself.
 
 **Accuracy without labels (CBPE).** Calibrated probabilities give an expected confusion matrix,
 and from it accuracy, precision, recall and F1, each with a confidence band. When labels arrive,
-`check_concept_drift` compares estimate and reality on the same rows; a gap that leaves the band
-means the input–outcome relationship has changed, which input drift tests cannot see.
+`check_concept_drift` compares estimate and reality on the same rows; measured accuracy below the
+band means the input–outcome relationship has changed, which input drift tests cannot see.
+Measured accuracy above the band is shown but not alerted on.
+
+**Missing values.** A feature whose share of empty values rises more than 5 points above its
+reference opens a data quality incident (critical above 25). It is separate from drift because
+the values that are present can look perfectly normal.
 
 **Slice root cause.** A drop in a metric is split into "the model got worse in this slice" and
 "more traffic came from a harder slice". Slices are ranked by the part of their drop that is
@@ -137,25 +181,22 @@ realized  0.842
   300 simulated windows; the multivariate detector's daily false-alarm rate stays at or below
   1.5% over 400 clean days (it was 6.5% before [ADR 6](docs/adr/0006-false-alarms-and-detection-power.md));
   the calibration noise floor matches simulation within 15%.
-- **Live equals static.** A parity test sends demo scenarios through the whole service (CSV
-  upload, HTTP ingest, Redis, worker, Postgres, read API) and requires every document to equal
-  the in-memory result exactly. Streaming all four scenarios (182,624 predictions) through the
-  SDK into a running stack gave documents identical to the committed demo, and the dashboard's
-  full Playwright suite passed against the live API.
-- **Detection power, measured.** Over five random seeds: no incident before an injected change,
-  none on the healthy model, the subtle credit-risk concept drift caught in 4 of 5, the other
-  two failures in 5 of 5 ([ADR 6](docs/adr/0006-false-alarms-and-detection-power.md)).
-- **Server**: 84 tests against real Postgres and Redis, covering auth and scopes, every
-  validation path, idempotent retries, labels before predictions, dead-lettering after repeated
-  failure, stream trimming, partition retention and an incident's whole life (open, resolve,
-  reopen). The SDK's 16 tests cover batching, retries, `Retry-After`, never raising, and dropping
-  the oldest records when the buffer is full. Python coverage is 95%.
-- **Realistic traffic.** Running the demo scenarios through the engine exposed three problems the
-  unit tests had not, each now fixed and tested ([ADR 5](docs/adr/0005-calibration-and-concept-band.md)).
-- **Web**: 72 unit and component tests, a contract test that every generated JSON file passes
-  the dashboard's schemas, and 62 Playwright tests on desktop and phone covering the journey from
-  the landing page to an incident's cause, keyboard access to charts, no sideways scrolling, and
-  zero serious axe accessibility violations in light and dark mode on every page.
+- **Live equals static.** A parity test sends four demo scenarios through the whole service
+  (CSV upload, HTTP ingest, Redis, worker, Postgres, read API) and requires every document,
+  incident and daily row to equal the in-memory result exactly.
+- **False alarms and detection.** Three random seeds, eight models, 90 days each: no incident
+  before an injected change or on a model without one; every injected problem opened an incident
+  one to four days after it started; the temporary shift resolved by itself
+  ([ADR 6](docs/adr/0006-false-alarms-and-detection-power.md), [ADR 8](docs/adr/0008-episodes-data-quality-bi.md)).
+- **Python**: 271 tests (155 core, 100 server against real Postgres and Redis, 16 SDK). Server
+  tests cover auth and scopes, every validation path, idempotent retries, labels before
+  predictions, dead-lettering, stream trimming, partition retention, incident history and the
+  CSV exports. Coverage is 96%.
+- **Web**: 129 unit and component tests, including a contract test that every generated JSON
+  file passes the dashboard's schemas, and 126 Playwright tests on desktop and phone: the journey
+  from the landing page to an incident's cause, slicers surviving navigation, brushing, CSV
+  downloads, keyboard access to charts, no sideways scrolling, and no serious axe violations on
+  any page in either theme.
 - Strict mypy and TypeScript, ruff and ESLint, CI on Python 3.11–3.13 and Node 22.
 
 ## Run it
@@ -164,7 +205,7 @@ The whole stack in Docker (dashboard on http://localhost:8080, API on http://loc
 
 ```bash
 make up                 # Postgres, Redis, API, worker, dashboard
-make demo               # stream the four demo scenarios in through the SDK
+make demo               # stream the demo scenarios in through the SDK
 make down
 ```
 
@@ -176,7 +217,7 @@ make check              # lint, types, tests with coverage
                         # server tests need Postgres and Redis: set SENTINEL_TEST_DATABASE_URL
                         # and SENTINEL_TEST_REDIS_URL, or they are skipped
 make parity             # compare with Evidently and NannyML (separate environment)
-make fixtures           # regenerate the dashboard's demo data from the engine
+make fixtures           # regenerate the demo data, BI tables and BI reports
 
 cd web && npm ci
 npm run dev             # http://localhost:5173 (dashboard at /overview), on the bundled demo data
@@ -195,6 +236,7 @@ Each choice and its trade-off is written down in [`docs/adr`](docs/adr):
 5. [Calibration rule, concept-drift band, slice concentration](docs/adr/0005-calibration-and-concept-band.md)
 6. [False alarms and detection power](docs/adr/0006-false-alarms-and-detection-power.md)
 7. [Server architecture: queued ingest, materialised documents, incident lifecycle](docs/adr/0007-server-architecture.md)
+8. [Incident history, data quality, one-sided label check, BI tables](docs/adr/0008-episodes-data-quality-bi.md)
 
 ## Limits
 
@@ -206,6 +248,8 @@ Each choice and its trade-off is written down in [`docs/adr`](docs/adr):
   model. Beyond that, a columnar store is the next step ([ADR 7](docs/adr/0007-server-architecture.md)).
 - The compose file is for one machine and has no TLS or user accounts; API keys are the only
   access control.
+- The data quality threshold is the same for every feature; there is no per-feature setting yet.
+- All demo traffic is synthetic. The analysis is the same code the service runs.
 
 ## License
 

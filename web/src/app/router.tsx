@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router";
+import { createBrowserRouter, redirect } from "react-router";
 import { NotFound, RouteError } from "../pages/NotFound";
 import { AppShell } from "./AppShell";
 
@@ -20,26 +20,40 @@ export const routes = [
         children: [
           {
             path: "overview",
-            lazy: () => import("../pages/FleetPage").then((m) => ({ Component: m.FleetPage })),
+            lazy: () =>
+              import("../pages/overview/OverviewPage").then((m) => ({ Component: m.OverviewPage })),
+          },
+          {
+            path: "models",
+            lazy: () => import("../pages/models/ModelsPage").then((m) => ({ Component: m.ModelsPage })),
           },
           {
             path: "models/:modelId",
-            lazy: () => import("../pages/ModelPage").then((m) => ({ Component: m.ModelPage })),
+            lazy: () => import("../pages/model/ModelPage").then((m) => ({ Component: m.ModelPage })),
           },
           {
+            // Old address of the inputs page, kept so shared links still land in the right place.
             path: "models/:modelId/inputs",
-            lazy: () =>
-              import("../pages/ModelInputsPage").then((m) => ({ Component: m.ModelInputsPage })),
+            loader: ({ params }: { params: { modelId?: string } }) =>
+              redirect(`/models/${params.modelId ?? ""}?tab=inputs`),
           },
           {
             path: "incidents",
             lazy: () =>
-              import("../pages/IncidentsPage").then((m) => ({ Component: m.IncidentsPage })),
+              import("../pages/incidents/IncidentsPage").then((m) => ({ Component: m.IncidentsPage })),
           },
           {
             path: "incidents/:incidentId",
             lazy: () =>
-              import("../pages/IncidentPage").then((m) => ({ Component: m.IncidentPage })),
+              import("../pages/incident/IncidentPage").then((m) => ({ Component: m.IncidentPage })),
+          },
+          {
+            path: "explore",
+            lazy: () => import("../pages/explore/ExplorePage").then((m) => ({ Component: m.ExplorePage })),
+          },
+          {
+            path: "reports",
+            lazy: () => import("../pages/reports/ReportsPage").then((m) => ({ Component: m.ReportsPage })),
           },
           { path: "*", element: <NotFound /> },
         ],

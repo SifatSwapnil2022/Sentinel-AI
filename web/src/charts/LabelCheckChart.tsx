@@ -29,7 +29,11 @@ export function LabelCheckChart({ days }: { days: Day[] }) {
     .range([0, innerWidth])
     .paddingOuter(0.1);
   const cx = (date: string) => (x(date) ?? 0) + x.bandwidth() / 2;
-  const points: Point[] = days.flatMap((d) => (d.labelCheck ? [{ date: d.date, ...d.labelCheck }] : []));
+  // Flag what raises an incident: measured below the range. Above it, the model did better
+  // than its confidence said, which is worth seeing but not worth paging about.
+  const points: Point[] = days.flatMap((d) =>
+    d.labelCheck ? [{ date: d.date, ...d.labelCheck, flagged: d.conceptFlag === true }] : [],
+  );
 
   if (points.length === 0) {
     return (
@@ -67,7 +71,7 @@ export function LabelCheckChart({ days }: { days: Day[] }) {
       <figcaption id={captionId} className="visually-hidden">
         Measured accuracy over rolling weeks of labelled predictions against the estimate's range.{" "}
         {flagged.length > 0
-          ? `Measured fell outside the range on ${flagged.length} days, first on ${shortDate(flagged[0]?.date ?? "")}.`
+          ? `Measured fell below the range on ${flagged.length} days, first on ${shortDate(flagged[0]?.date ?? "")}.`
           : "Measured stayed inside the range every day."}
       </figcaption>
       <div ref={ref} className={styles.frame} role="group" aria-labelledby={captionId}>
@@ -146,7 +150,7 @@ export function LabelCheckChart({ days }: { days: Day[] }) {
             <span>
               Expected {percentRange(active.lower, active.upper)}
             </span>
-            {active.flagged && <span className={styles.outText}>Outside the expected range</span>}
+            {active.flagged && <span className={styles.outText}>Below the expected range</span>}
           </div>
         )}
       </div>

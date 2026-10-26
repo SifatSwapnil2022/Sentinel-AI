@@ -1,0 +1,210 @@
+.banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: max-content;
+  padding: 6px var(--space-3);
+  border-radius: var(--radius-control);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--critical);
+  background: var(--panel);
+  font-size: var(--text-sm);
+}
+
+.banner[data-severity="warning"] {
+  border-left-color: var(--warning);
+}
+
+.tabs {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line);
+}
+
+.tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 var(--space-3);
+  color: var(--muted);
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.tab:hover {
+  color: var(--ink);
+}
+
+.tab[aria-current="page"] {
+  color: var(--ink);
+}
+
+.tab[aria-current="page"]::after {
+  content: "";
+  position: absolute;
+  left: var(--space-3);
+  right: var(--space-3);
+  bottom: -1px;
+  height: 2px;
+  background: var(--estimate);
+}
+
+.tabCount {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--raised);
+  border: 1px solid var(--line-strong);
+  font-size: var(--text-xs);
+  line-height: 16px;
+  text-align: center;
+}
+
+/* Small figures above a tab's charts. */
+.stats {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-tile);
+  overflow: hidden;
+}
+
+.stats > div {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: var(--space-3) var(--space-4);
+  background: var(--panel);
+  min-width: 0;
+}
+
+.stats dt {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.stats dd {
+  margin: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.statValue {
+  font-size: var(--text-xl);
+  font-weight: 550;
+  font-stretch: 92%;
+}
+
+.statNote {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  font-stretch: var(--stretch-data);
+}
+
+.note {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  max-width: 100ch;
+}
+
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  overflow: hidden;
+}
+
+.segmented button {
+  height: 26px;
+  padding: 0 10px;
+  border: 0;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.segmented button + button {
+  border-left: 1px solid var(--line-strong);
+}
+
+.segmented button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--panel);
+}
+
+.select {
+  height: 28px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  background: var(--raised);
+  color: var(--ink);
+  font-size: var(--text-sm);
+}
+
+/* Data bars in tables: share of traffic, drawn to scale. */
+.bar {
+  position: relative;
+  display: inline-block;
+  width: 90px;
+  height: 8px;
+  margin-right: var(--space-2);
+  border-radius: 2px;
+  background: var(--wash);
+  vertical-align: middle;
+}
+
+.bar > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 2px;
+  background: var(--estimate);
+}
+
+.bar[data-kind="reference"] > span {
+  background: var(--muted);
+}
+
+.delta {
+  display: inline-block;
+  min-width: 78px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  text-align: right;
+}
+
+.selectedRow {
+  background: var(--wash);
+}
+
+@media (max-width: 900px) {
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.shares {
+  display: grid;
+  gap: 2px;
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.delta[data-strong="true"] {
+  color: #fff;
+}
+
+.modelCell {
+  min-width: 260px;
+  max-width: 420px;
+  white-space: normal;
+}

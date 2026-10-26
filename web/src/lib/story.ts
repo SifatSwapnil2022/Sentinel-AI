@@ -85,3 +85,27 @@ export function brokenLink(incident: Incident): BrokenLink | null {
 export function quietModels(fleet: Fleet): string[] {
   return fleet.models.filter((m) => m.status === "healthy").map((m) => m.id);
 }
+
+/** A feature that started arriving empty, and what the accuracy estimate did meanwhile. */
+export interface MissingCase {
+  incidentId: string;
+  modelId: string;
+  feature: string;
+  nullRate: number;
+  referenceNullRate: number;
+  /** Estimated minus reference accuracy over the incident window; positive means it went up. */
+  estimateChange: number;
+}
+
+export function missingCase(incident: Incident): MissingCase | null {
+  const worst = incident.missingFeatures[0];
+  if (incident.kind !== "data_quality" || !worst) return null;
+  return {
+    incidentId: incident.id,
+    modelId: incident.modelId,
+    feature: worst.name,
+    nullRate: worst.nullRate,
+    referenceNullRate: worst.referenceNullRate,
+    estimateChange: incident.metric.current - incident.metric.reference,
+  };
+}

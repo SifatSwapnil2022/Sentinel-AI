@@ -4,7 +4,7 @@
   "installCommand": "npm ci",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "rewrites": [{ "source": "/((?!assets/|data/).*)", "destination": "/index.html" }],
+  "rewrites": [{ "source": "/((?!assets/|data/|reports/).*)", "destination": "/index.html" }],
   "headers": [
     {
       "source": "/assets/(.*)",

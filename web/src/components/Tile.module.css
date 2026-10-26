@@ -1,0 +1,117 @@
+.tile {
+  grid-column: span 12;
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-tile);
+}
+
+@media (min-width: 1100px) {
+  .tile[data-span="3"] { grid-column: span 3; }
+  .tile[data-span="4"] { grid-column: span 4; }
+  .tile[data-span="5"] { grid-column: span 5; }
+  .tile[data-span="6"] { grid-column: span 6; }
+  .tile[data-span="7"] { grid-column: span 7; }
+  .tile[data-span="8"] { grid-column: span 8; }
+}
+
+@media (min-width: 760px) and (max-width: 1099px) {
+  .tile[data-span="3"],
+  .tile[data-span="4"],
+  .tile[data-span="5"],
+  .tile[data-span="6"] { grid-column: span 6; }
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--line);
+  min-height: 44px;
+}
+
+.titles {
+  display: grid;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+  padding-top: 3px;
+}
+
+.title {
+  font-size: var(--text-md);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.note {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  font-stretch: var(--stretch-data);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 2px;
+}
+
+.action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.action:hover {
+  color: var(--ink);
+  background: var(--wash);
+}
+
+.action[aria-pressed="true"] {
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+.icon {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.body {
+  min-width: 0;
+  padding: var(--space-3) var(--space-4) var(--space-4);
+}
+
+.dialog {
+  width: min(1400px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-tile);
+  background: var(--panel);
+  color: var(--ink);
+}
+
+.dialog::backdrop {
+  background: var(--overlay);
+}
+
+.dialog .body {
+  overflow: auto;
+}

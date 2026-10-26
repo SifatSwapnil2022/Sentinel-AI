@@ -1,18 +1,23 @@
-import { type MouseEvent, useId, useState } from "react";
-import { NavLink, Outlet } from "react-router";
-import { StatusMark } from "../components/StatusMark";
-import { useFleet } from "../data/api";
-import type { Status } from "../data/schema";
-import { longDate } from "../lib/format";
+import { useId, useState } from "react";
+import { NavLink, Outlet, useLocation } from "react-router";
+import { source, useFleet } from "../data/api";
+import { shortDate } from "../lib/format";
 import styles from "./AppShell.module.css";
-import { Wordmark } from "./Wordmark";
 import { type ThemeChoice, useTheme } from "./theme";
+import { Wordmark } from "./Wordmark";
 
-const RANK: Record<Status, number> = { critical: 0, warning: 1, healthy: 2 };
+const SECTIONS = [
+  { to: "/overview", label: "Overview" },
+  { to: "/models", label: "Models" },
+  { to: "/incidents", label: "Incidents" },
+  { to: "/explore", label: "Explore" },
+  { to: "/reports", label: "Reports" },
+] as const;
+
 const THEMES: { value: ThemeChoice; label: string }[] = [
-  { value: "system", label: "Auto" },
-  { value: "light", label: "Light" },
   { value: "dark", label: "Dark" },
+  { value: "light", label: "Light" },
+  { value: "system", label: "Auto" },
 ];
 
 export function AppShell() {
@@ -20,12 +25,12 @@ export function AppShell() {
   const [theme, setTheme] = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const navId = useId();
-
-
-  const models = [...(fleet.data?.models ?? [])].sort(
-    (a, b) => RANK[a.status] - RANK[b.status] || a.name.localeCompare(b.name),
-  );
-  const openIncidents = fleet.data?.alerts.length ?? 0;
+  const { search } = useLocation();
+  const open = fleet.data?.alerts.length ?? 0;
+  // Carry the slicers across sections, so a filtered view survives navigation.
+  const carry = new URLSearchParams(search);
+  carry.delete("tab");
+  const keep = carry.toString() ? `?${carry.toString()}` : "";
 
   return (
     <div className={styles.shell}>
@@ -39,80 +44,51 @@ export function AppShell() {
           className={styles.menuButton}
           aria-expanded={menuOpen}
           aria-controls={navId}
-          onClick={() => setMenuOpen((open) => !open)}
+          onClick={() => setMenuOpen((v) => !v)}
         >
           {menuOpen ? "Close" : "Menu"}
         </button>
-      </header>
-
-      <nav
-        id={navId}
-        className={styles.nav}
-        data-open={menuOpen}
-        aria-label="Main"
-        onClick={(event: MouseEvent<HTMLElement>) => {
-          // On phones the menu covers the page; close it once a link is chosen.
-          if (event.target instanceof Element && event.target.closest("a")) setMenuOpen(false);
-        }}
-      >
-        <div className={styles.navHead}>
-          <Wordmark to="/" label="Sentinel home" />
-        </div>
-
-        <ul className={styles.primary}>
-          <li>
-            <NavLink to="/overview" end className={styles.link ?? ""}>
-              Overview
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/incidents" className={styles.link ?? ""}>
-              Incidents
-              {openIncidents > 0 && (
-                <span className={styles.count} aria-label={`${openIncidents} open`}>
-                  {openIncidents}
-                </span>
-              )}
-            </NavLink>
-          </li>
-        </ul>
-
-        <p className={styles.groupLabel} id={`${navId}-models`}>
-          Models
-        </p>
-        <ul className={styles.models} aria-labelledby={`${navId}-models`}>
-          {models.map((m) => (
-            <li key={m.id}>
-              <NavLink to={`/models/${m.id}`} className={styles.link ?? ""}>
-                <StatusMark status={m.status} compact />
-                <span className={styles.modelName}>{m.name}</span>
-              </NavLink>
-            </li>
-          ))}
-        </ul>
-
-        <div className={styles.foot}>
-          {fleet.data && (
-            <p className={styles.asOf}>Data through {longDate(fleet.data.today)}</p>
-          )}
-          <fieldset className={styles.theme}>
-            <legend className="visually-hidden">Colour theme</legend>
-            {THEMES.map((t) => (
-              <label key={t.value} className={styles.themeOption}>
-                <input
-                  type="radio"
-                  name="theme"
-                  value={t.value}
-                  checked={theme === t.value}
-                  onChange={() => setTheme(t.value)}
-                />
-                <span>{t.label}</span>
-              </label>
+        <nav
+          id={navId}
+          aria-label="Main"
+          className={styles.nav}
+          data-open={menuOpen}
+          onClick={(event) => {
+            if (event.target instanceof Element && event.target.closest("a")) setMenuOpen(false);
+          }}
+        >
+          <ul>
+            {SECTIONS.map((s) => (
+              <li key={s.to}>
+                <NavLink to={`${s.to}${keep}`} className={styles.link ?? ""}>
+                  {s.label}
+                  {s.to === "/incidents" && open > 0 && (
+                    <span className={styles.count} aria-label={`, ${open} open`}>
+                      {open}
+                    </span>
+                  )}
+                </NavLink>
+              </li>
             ))}
-          </fieldset>
-        </div>
-      </nav>
-
+          </ul>
+          <div className={styles.meta}>
+            <p className={styles.source}>
+              {source.live ? "Live" : "Demo data"}
+              {fleet.data && <> to {shortDate(fleet.data.today)}</>}
+            </p>
+            <label className={styles.theme}>
+              <span className="visually-hidden">Colour theme</span>
+              <select value={theme} onChange={(e) => setTheme(e.target.value as ThemeChoice)}>
+                {THEMES.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </nav>
+      </header>
       <main id="main" className={styles.main} tabIndex={-1}>
         <Outlet />
       </main>

@@ -3,12 +3,15 @@ import { useCallback, useEffect, useState } from "react";
 export type ThemeChoice = "system" | "light" | "dark";
 const KEY = "sentinel.theme";
 
+/** Dark unless the viewer chose otherwise: a monitoring console is mostly read on long shifts. */
+export const DEFAULT_THEME: ThemeChoice = "dark";
+
 function read(): ThemeChoice {
   try {
     const stored = localStorage.getItem(KEY);
-    return stored === "light" || stored === "dark" ? stored : "system";
+    return stored === "light" || stored === "system" || stored === "dark" ? stored : DEFAULT_THEME;
   } catch {
-    return "system";
+    return DEFAULT_THEME;
   }
 }
 
@@ -25,7 +28,7 @@ export function useTheme() {
   useEffect(() => {
     applyTheme(choice);
     try {
-      if (choice === "system") localStorage.removeItem(KEY);
+      if (choice === DEFAULT_THEME) localStorage.removeItem(KEY);
       else localStorage.setItem(KEY, choice);
     } catch {
       // Storage can be unavailable (private mode); the choice still applies for this visit.

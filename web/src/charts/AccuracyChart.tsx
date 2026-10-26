@@ -21,6 +21,12 @@ interface Props {
   reference: number | null;
   /** Human name of the metric for labels, e.g. "Accuracy". */
   label: string;
+  /** The period before, drawn as a dashed line under this one, day by day. */
+  compare?: Day[] | undefined;
+  /** Called with the dates the reader drags across (or marks with Enter), to zoom to them. */
+  onSelectRange?: (from: string, to: string) => void;
+  /** Dates to mark with a labelled vertical rule, such as an incident opening. */
+  markers?: { date: string; label: string }[] | undefined;
 }
 
 interface Point {
@@ -50,9 +56,11 @@ export function toPoints(days: Day[], metric: MetricName): Point[] {
   });
 }
 
-export function AccuracyChart({ days, metric, reference, label }: Props) {
+export function AccuracyChart({ days, metric, reference, label, compare, onSelectRange, markers = [] }: Props) {
   const [ref, width] = useElementWidth<HTMLDivElement>(900);
   const [active, setActive] = useState<number | null>(null);
+  const [anchor, setAnchor] = useState<number | null>(null);
+  const [dragging, setDragging] = useState(false);
   const titleId = useId();
   const points = useMemo(() => toPoints(days, metric), [days, metric]);
 
@@ -66,7 +74,9 @@ export function AccuracyChart({ days, metric, reference, label }: Props) {
     .paddingOuter(0.1);
   const cx = (date: string) => (x(date) ?? 0) + x.bandwidth() / 2;
 
+  const previous = useMemo(() => (compare ? toPoints(compare, metric) : []), [compare, metric]);
   const values = points.flatMap((p) => [p.lower, p.upper, p.measured]).filter(isNumber);
+  for (const p of previous) if (p.value !== null) values.push(p.value);
   if (reference !== null) values.push(reference);
   const lo = Math.max(0, Math.floor((Math.min(...values) - 0.01) * 50) / 50);
   const hi = Math.min(1, Math.ceil((Math.max(...values) + 0.01) * 50) / 50);
@@ -89,9 +99,19 @@ export function AccuracyChart({ days, metric, reference, label }: Props) {
   const strip = scaleLinear().domain([0, 1]).range([STRIP_HEIGHT, 0]);
   const barWidth = Math.min(x.bandwidth(), 12);
   const stripTop = MARGIN.top + PLOT_HEIGHT + STRIP_GAP;
-  const dateTicks = points.filter((_, i) => (points.length - 1 - i) % 7 === 0);
+  // Label as many days as fit, always including the latest.
+  const tickStep = Math.max(1, Math.ceil(points.length / Math.max(innerWidth / 64, 2)));
+  const dateTicks = points.filter((_, i) => (points.length - 1 - i) % tickStep === 0);
+  const comparePath =
+    previous.length > 0
+      ? (line<Point>()
+          .defined((p) => p.value !== null)
+          .x((_, i) => cx(points[i + Math.max(points.length - previous.length, 0)]?.date ?? ""))
+          .y((p) => y(p.value ?? 0))
+          .curve(curveMonotoneX)(previous.slice(-points.length)) ?? "")
+      : "";
 
-  const pick = (event: PointerEvent<SVGRectElement>) => {
+  const indexAt = (event: PointerEvent<SVGRectElement>) => {
     const bounds = event.currentTarget.getBoundingClientRect();
     const px = event.clientX - bounds.left;
     let best = 0;
@@ -103,7 +123,14 @@ export function AccuracyChart({ days, metric, reference, label }: Props) {
         bestDistance = distance;
       }
     });
-    setActive(best);
+    return best;
+  };
+
+  const select = (a: number, b: number) => {
+    const [from, to] = [Math.min(a, b), Math.max(a, b)];
+    const start = points[from];
+    const end = points[to];
+    if (onSelectRange && start && end && to > from) onSelectRange(start.date, end.date);
   };
 
   const onKey = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -112,10 +139,23 @@ export function AccuracyChart({ days, metric, reference, label }: Props) {
     else if (event.key === "ArrowRight") setActive((i) => Math.min(last, (i ?? -1) + 1));
     else if (event.key === "Home") setActive(0);
     else if (event.key === "End") setActive(last);
-    else if (event.key === "Escape") setActive(null);
-    else return;
+    else if (event.key === "Escape") {
+      setActive(null);
+      setAnchor(null);
+    } else if (event.key === "Enter" && onSelectRange && active !== null) {
+      // Enter on one day, then another, zooms to the days between.
+      if (anchor === null) setAnchor(active);
+      else {
+        select(anchor, active);
+        setAnchor(null);
+      }
+    } else return;
     event.preventDefault();
   };
+  const selection =
+    anchor !== null && active !== null
+      ? [Math.min(anchor, active), Math.max(anchor, active)]
+      : null;
 
   const activePoint = active === null ? undefined : points[active];
   const latest = points.at(-1);
@@ -125,7 +165,8 @@ export function AccuracyChart({ days, metric, reference, label }: Props) {
       <figcaption id={titleId} className="visually-hidden">
         {label} over {points.length} days. Latest estimate {percent(latest?.value)}, likely{" "}
         {percentRange(latest?.lower ?? null, latest?.upper ?? null)}. Use the arrow keys to read
-        each day; a table of every value follows the chart.
+        each day{onSelectRange ? "; press Enter on two days to zoom to them" : ""}. The table
+        view has every value.
       </figcaption>
       <div
         ref={ref}
@@ -162,6 +203,28 @@ export function AccuracyChart({ days, metric, reference, label }: Props) {
               </g>
             )}
 
+            {selection && (
+              <rect
+                className={styles.selection}
+                x={cx(points[selection[0] ?? 0]?.date ?? "") - x.bandwidth() / 2}
+                width={
+                  cx(points[selection[1] ?? 0]?.date ?? "") - cx(points[selection[0] ?? 0]?.date ?? "") + x.bandwidth()
+                }
+                y={-8}
+                height={PLOT_HEIGHT + 8}
+              />
+            )}
+            {markers
+              .filter((m) => x(m.date) !== undefined)
+              .map((m) => (
+                <g key={m.date} transform={`translate(${cx(m.date)},0)`}>
+                  <line className={styles.marker} y1={-8} y2={PLOT_HEIGHT} />
+                  <text className={styles.markerLabel} x={4} y={-1}>
+                    {m.label}
+                  </text>
+                </g>
+              ))}
+            {comparePath && <path className={styles.compare} d={comparePath} />}
             <path className={styles.band} d={bandPath} />
             <path className={styles.line} d={linePath} />
 
@@ -225,8 +288,22 @@ export function AccuracyChart({ days, metric, reference, label }: Props) {
             y={0}
             width={innerWidth}
             height={height - AXIS_HEIGHT}
-            onPointerMove={pick}
-            onPointerLeave={() => setActive(null)}
+            style={onSelectRange ? { cursor: "crosshair" } : undefined}
+            onPointerDown={(event) => {
+              if (!onSelectRange) return;
+              event.currentTarget.setPointerCapture(event.pointerId);
+              setAnchor(indexAt(event));
+              setDragging(true);
+            }}
+            onPointerMove={(event) => setActive(indexAt(event))}
+            onPointerUp={(event) => {
+              if (dragging && anchor !== null) select(anchor, indexAt(event));
+              setDragging(false);
+              setAnchor(null);
+            }}
+            onPointerLeave={() => {
+              if (!dragging) setActive(null);
+            }}
           />
         </svg>
 

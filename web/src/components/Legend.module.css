@@ -47,3 +47,9 @@
 .barReference {
   fill: var(--hairline-strong);
 }
+
+.previous {
+  stroke: var(--muted);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+}

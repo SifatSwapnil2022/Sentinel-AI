@@ -3,9 +3,11 @@
   align-items: center;
   gap: 10px;
   font-size: var(--text-lg);
-  font-weight: 600;
-  letter-spacing: -0.005em;
+  font-weight: 650;
+  font-stretch: var(--stretch-heading);
+  letter-spacing: 0;
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .band {
