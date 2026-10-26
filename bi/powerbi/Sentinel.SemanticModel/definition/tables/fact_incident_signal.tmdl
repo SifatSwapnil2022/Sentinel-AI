@@ -1,0 +1,39 @@
+/// Each check that fired within an incident.
+table fact_incident_signal
+	lineageTag: 8729ff90-6c09-5297-a0c4-5aa8d2f13129
+
+	column incident_id
+		dataType: string
+		lineageTag: c26a7806-fdd3-529f-8c5c-335efcd31dd6
+		summarizeBy: none
+		sourceColumn: incident_id
+
+	column kind
+		dataType: string
+		lineageTag: 3d2bcdf5-f812-5d90-ad3d-a5d65ea55183
+		summarizeBy: none
+		sourceColumn: kind
+
+	column severity
+		dataType: string
+		lineageTag: 8e0590c1-df42-596d-9c9e-26d0a660ef0b
+		summarizeBy: none
+		sourceColumn: severity
+
+	column fired_on
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		lineageTag: c02724d5-09ad-54ca-885b-b384ec0c5a0c
+		summarizeBy: none
+		sourceColumn: fired_on
+		annotation UnderlyingDateTimeDataType = Date
+
+	partition fact_incident_signal = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(Web.Contents(DataUrl, [RelativePath = "fact_incident_signal.csv", Headers = if ApiKey = "" then [] else [Authorization = "Bearer " & ApiKey]]), [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Typed = Table.TransformColumnTypes(Promoted, {{"incident_id", type text}, {"kind", type text}, {"severity", type text}, {"fired_on", type date}}, "en-US")
+				in
+				    Typed

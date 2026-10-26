@@ -1,0 +1,171 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.2.0/schema.json",
+  "name": "73cbf1a04a9356c0b22d",
+  "position": {
+    "x": 20,
+    "y": 364,
+    "z": 0,
+    "width": 1240,
+    "height": 340
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_incident"
+                    }
+                  },
+                  "Property": "incident_id"
+                }
+              },
+              "queryRef": "fact_incident.incident_id",
+              "nativeQueryRef": "incident_id"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "dim_model"
+                    }
+                  },
+                  "Property": "model_name"
+                }
+              },
+              "queryRef": "dim_model.model_name",
+              "nativeQueryRef": "model_name"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_incident"
+                    }
+                  },
+                  "Property": "title"
+                }
+              },
+              "queryRef": "fact_incident.title",
+              "nativeQueryRef": "title"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_incident"
+                    }
+                  },
+                  "Property": "severity"
+                }
+              },
+              "queryRef": "fact_incident.severity",
+              "nativeQueryRef": "severity"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_incident"
+                    }
+                  },
+                  "Property": "status"
+                }
+              },
+              "queryRef": "fact_incident.status",
+              "nativeQueryRef": "status"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_incident"
+                    }
+                  },
+                  "Property": "opened_on"
+                }
+              },
+              "queryRef": "fact_incident.opened_on",
+              "nativeQueryRef": "opened_on"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_incident"
+                    }
+                  },
+                  "Property": "resolved_on"
+                }
+              },
+              "queryRef": "fact_incident.resolved_on",
+              "nativeQueryRef": "resolved_on"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_incident"
+                    }
+                  },
+                  "Property": "days_open"
+                }
+              },
+              "queryRef": "fact_incident.days_open",
+              "nativeQueryRef": "days_open"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_incident"
+                    }
+                  },
+                  "Property": "top_segment"
+                }
+              },
+              "queryRef": "fact_incident.top_segment",
+              "nativeQueryRef": "top_segment"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true,
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'All incidents'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

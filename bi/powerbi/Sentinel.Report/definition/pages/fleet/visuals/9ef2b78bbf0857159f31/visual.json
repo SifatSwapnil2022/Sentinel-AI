@@ -1,0 +1,37 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.2.0/schema.json",
+  "name": "9ef2b78bbf0857159f31",
+  "position": {
+    "x": 650,
+    "y": 88,
+    "z": 0,
+    "width": 300,
+    "height": 110
+  },
+  "visual": {
+    "visualType": "card",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_model_day"
+                    }
+                  },
+                  "Property": "Accuracy gap (points)"
+                }
+              },
+              "queryRef": "fact_model_day.Accuracy gap (points)",
+              "nativeQueryRef": "Accuracy gap (points)"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

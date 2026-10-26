@@ -1,0 +1,15 @@
+model Model
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: en-US
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+ref table dim_model
+ref table dim_date
+ref table fact_model_day
+ref table fact_feature_day
+ref table fact_segment
+ref table fact_incident
+ref table fact_incident_signal

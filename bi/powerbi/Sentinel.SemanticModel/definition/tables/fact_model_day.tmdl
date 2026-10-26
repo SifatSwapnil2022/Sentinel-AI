@@ -1,0 +1,193 @@
+/// Model by day: traffic, estimated and measured metrics, latency, drift counts.
+table fact_model_day
+	lineageTag: 36fdcad6-1ee1-5e9b-adfd-4adb8462ffa4
+
+	measure 'Predictions' = SUM ( fact_model_day[predictions] )
+		formatString: #,0
+		lineageTag: d97ed55c-9a58-546c-b6d2-6ebdbdbabbc5
+
+	measure 'Estimated accuracy' = DIVIDE ( SUMX ( fact_model_day, fact_model_day[est_accuracy] * fact_model_day[predictions] ), [Predictions] )
+		formatString: 0.0%
+		lineageTag: cd3c5585-f3e7-5276-8dff-ffd206c9423e
+
+	measure 'Reference accuracy' = DIVIDE ( SUMX ( fact_model_day, RELATED ( dim_model[reference_accuracy] ) * fact_model_day[predictions] ), [Predictions] )
+		formatString: 0.0%
+		lineageTag: e8c764f8-dfed-59d0-b88d-ed54fa4f6c84
+
+	measure 'Accuracy gap (points)' = ( [Estimated accuracy] - [Reference accuracy] ) * 100
+		formatString: +0.0;-0.0;0.0
+		lineageTag: 55e017bd-17a5-53c4-a128-0b2198ab9b14
+
+	measure 'Measured accuracy' =
+			VAR labelled = FILTER ( fact_model_day, fact_model_day[label_coverage] >= 0.5 && NOT ISBLANK ( fact_model_day[measured_accuracy] ) )
+			RETURN DIVIDE ( SUMX ( labelled, fact_model_day[measured_accuracy] * fact_model_day[predictions] ), SUMX ( labelled, fact_model_day[predictions] ) )
+		formatString: 0.0%
+		lineageTag: b0a42f26-dfbd-58dd-9402-9c00761eaa9c
+
+	measure 'Label coverage' = DIVIDE ( SUMX ( fact_model_day, fact_model_day[label_coverage] * fact_model_day[predictions] ), [Predictions] )
+		formatString: 0%
+		lineageTag: e19cd34e-d01e-565b-a12c-06b395b2ba6d
+
+	measure 'p95 latency (ms)' = DIVIDE ( SUMX ( fact_model_day, fact_model_day[p95_latency_ms] * fact_model_day[predictions] ), [Predictions] )
+		formatString: 0
+		lineageTag: af58f4ed-2236-5b51-8b6f-41bbcbffbd2f
+
+	measure 'Drift days' = COUNTROWS ( FILTER ( fact_model_day, fact_model_day[drifted_features] >= 2 || fact_model_day[multivariate_drifted] ) )
+		formatString: 0
+		lineageTag: d3574d2c-40da-54cd-93d6-3bd46be7e010
+
+	measure 'Largest missing-value rise' = MAX ( fact_model_day[max_missing_jump] )
+		formatString: 0.0%
+		lineageTag: b3317ede-2651-5564-9c82-dfe396a52590
+
+	column model_id
+		dataType: string
+		lineageTag: 0b70c040-09ad-5fa0-b21d-4243045eb01f
+		summarizeBy: none
+		sourceColumn: model_id
+
+	column date
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		lineageTag: 67933381-e628-5630-96e2-e19457fb676f
+		summarizeBy: none
+		sourceColumn: date
+		annotation UnderlyingDateTimeDataType = Date
+
+	column predictions
+		dataType: int64
+		formatString: 0
+		lineageTag: 92b2a04f-309d-5835-b583-ff5f70267d66
+		summarizeBy: none
+		sourceColumn: predictions
+
+	column est_accuracy
+		dataType: double
+		formatString: 0.0%
+		lineageTag: 208e9c4c-4927-5a8d-9011-0f47bfbcc7a8
+		summarizeBy: none
+		sourceColumn: est_accuracy
+
+	column est_accuracy_lower
+		dataType: double
+		formatString: 0.0%
+		lineageTag: 63b4c6c4-07d3-5a6f-a13b-c95b6477e43e
+		summarizeBy: none
+		sourceColumn: est_accuracy_lower
+
+	column est_accuracy_upper
+		dataType: double
+		formatString: 0.0%
+		lineageTag: b519ac7b-5e0b-5eed-b563-75f763c7170d
+		summarizeBy: none
+		sourceColumn: est_accuracy_upper
+
+	column est_precision
+		dataType: double
+		formatString: 0.0%
+		lineageTag: 6626eb51-6971-518b-911c-8f04a12cacb8
+		summarizeBy: none
+		sourceColumn: est_precision
+
+	column est_recall
+		dataType: double
+		formatString: 0.0%
+		lineageTag: 0a0d14cf-159b-50e8-b887-674eb537ad55
+		summarizeBy: none
+		sourceColumn: est_recall
+
+	column est_f1
+		dataType: double
+		formatString: 0.0%
+		lineageTag: 81bba05c-1d55-5f25-9ae8-d36bddcb12c2
+		summarizeBy: none
+		sourceColumn: est_f1
+
+	column measured_accuracy
+		dataType: double
+		formatString: 0.0%
+		lineageTag: af068f39-b169-52d9-a31c-478b445335e3
+		summarizeBy: none
+		sourceColumn: measured_accuracy
+
+	column measured_precision
+		dataType: double
+		formatString: 0.0%
+		lineageTag: e270f139-de06-55be-8fea-db5806363ef1
+		summarizeBy: none
+		sourceColumn: measured_precision
+
+	column measured_recall
+		dataType: double
+		formatString: 0.0%
+		lineageTag: 7cbd65c4-b9e6-5b3a-b77a-050fce84e269
+		summarizeBy: none
+		sourceColumn: measured_recall
+
+	column measured_f1
+		dataType: double
+		formatString: 0.0%
+		lineageTag: 32ca09f4-0873-59de-b601-ca4facc8c788
+		summarizeBy: none
+		sourceColumn: measured_f1
+
+	column label_coverage
+		dataType: double
+		formatString: 0.0%
+		lineageTag: 19f3ba43-a2e6-5640-8eaf-09ea0a6384fc
+		summarizeBy: none
+		sourceColumn: label_coverage
+
+	column p95_latency_ms
+		dataType: double
+		lineageTag: da901bc2-3e66-584c-be77-0a24eb860c5b
+		summarizeBy: none
+		sourceColumn: p95_latency_ms
+
+	column multivariate_error
+		dataType: double
+		lineageTag: 166bcf36-7470-5440-ab71-f3d861885172
+		summarizeBy: none
+		sourceColumn: multivariate_error
+
+	column multivariate_upper
+		dataType: double
+		lineageTag: 5583b138-e66f-5776-b71c-39885b3f77c1
+		summarizeBy: none
+		sourceColumn: multivariate_upper
+
+	column multivariate_drifted
+		dataType: boolean
+		lineageTag: 3574a4d8-8e26-5b81-a2d8-1dd3be59b6d0
+		summarizeBy: none
+		sourceColumn: multivariate_drifted
+
+	column concept_flag
+		dataType: boolean
+		lineageTag: 9a7196d4-e2f8-58a9-8243-df1162ecf4b2
+		summarizeBy: none
+		sourceColumn: concept_flag
+
+	column drifted_features
+		dataType: int64
+		formatString: 0
+		lineageTag: 9a29b103-0b7f-5ac1-8896-04a3af0163d9
+		summarizeBy: none
+		sourceColumn: drifted_features
+
+	column max_missing_jump
+		dataType: double
+		formatString: 0.0%
+		lineageTag: 23c602f2-a7a4-59c3-b316-6e5a3908d80d
+		summarizeBy: none
+		sourceColumn: max_missing_jump
+
+	partition fact_model_day = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(Web.Contents(DataUrl, [RelativePath = "fact_model_day.csv", Headers = if ApiKey = "" then [] else [Authorization = "Bearer " & ApiKey]]), [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Typed = Table.TransformColumnTypes(Promoted, {{"model_id", type text}, {"date", type date}, {"predictions", Int64.Type}, {"est_accuracy", type number}, {"est_accuracy_lower", type number}, {"est_accuracy_upper", type number}, {"est_precision", type number}, {"est_recall", type number}, {"est_f1", type number}, {"measured_accuracy", type number}, {"measured_precision", type number}, {"measured_recall", type number}, {"measured_f1", type number}, {"label_coverage", type number}, {"p95_latency_ms", type number}, {"multivariate_error", type number}, {"multivariate_upper", type number}, {"multivariate_drifted", type logical}, {"concept_flag", type logical}, {"drifted_features", Int64.Type}, {"max_missing_jump", type number}}, "en-US")
+				in
+				    Typed

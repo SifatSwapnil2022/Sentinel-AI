@@ -1,0 +1,11 @@
+/// Where the CSV tables are read from: this site's demo data, or a Sentinel API's /v1/export/ (keep the trailing slash).
+expression DataUrl = "https://sentinel-ai-sage-gamma.vercel.app/data/bi/" meta [IsParameterQuery = true, Type = "Text", IsParameterQueryRequired = true]
+	lineageTag: 3ebb4a58-b558-5d7d-8958-a54324e7a86e
+
+	annotation PBI_ResultType = Text
+
+/// A Sentinel API key with read scope. Leave empty for the demo data or an API with public reads.
+expression ApiKey = "" meta [IsParameterQuery = true, Type = "Text", IsParameterQueryRequired = false]
+	lineageTag: f8da5598-aff0-52c2-941f-ba4477339f7a
+
+	annotation PBI_ResultType = Text

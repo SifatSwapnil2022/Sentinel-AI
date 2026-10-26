@@ -1,0 +1,98 @@
+/// One row per model: owner, version, label delay, reference metrics and current status.
+table dim_model
+	lineageTag: acd9eb88-7a68-5e9f-8a08-fe5843e8bccf
+
+	column model_id
+		dataType: string
+		lineageTag: 772c77d2-f5df-53e0-9a86-406cc46864e7
+		summarizeBy: none
+		sourceColumn: model_id
+
+	column model_name
+		dataType: string
+		lineageTag: 5c3806a9-d8ac-5bbc-9b3e-4268054a8254
+		summarizeBy: none
+		sourceColumn: model_name
+
+	column team
+		dataType: string
+		lineageTag: f7a1b432-13ee-5cbf-b698-c2b0a11f06cb
+		summarizeBy: none
+		sourceColumn: team
+
+	column version
+		dataType: string
+		lineageTag: d6ac1d61-e85d-5c8e-9cc4-1904c8d4b6bf
+		summarizeBy: none
+		sourceColumn: version
+
+	column description
+		dataType: string
+		lineageTag: 95545f57-1332-5511-bbef-c932a23f68c2
+		summarizeBy: none
+		sourceColumn: description
+
+	column label_delay_days
+		dataType: int64
+		formatString: 0
+		lineageTag: d68c16ff-ae4a-5064-96b6-fb0176cc6ad6
+		summarizeBy: none
+		sourceColumn: label_delay_days
+
+	column reference_rows
+		dataType: int64
+		formatString: 0
+		lineageTag: 50671cd9-fb7a-5869-86ea-5dc59683988f
+		summarizeBy: none
+		sourceColumn: reference_rows
+
+	column reference_accuracy
+		dataType: double
+		formatString: 0.0%
+		lineageTag: 603bc646-81c4-5cd5-8d21-d39d95b2a51b
+		summarizeBy: none
+		sourceColumn: reference_accuracy
+
+	column reference_precision
+		dataType: double
+		formatString: 0.0%
+		lineageTag: 16de3002-a1c9-5661-b33e-1fa78f249da9
+		summarizeBy: none
+		sourceColumn: reference_precision
+
+	column reference_recall
+		dataType: double
+		formatString: 0.0%
+		lineageTag: 7188b473-d7f1-5892-acd5-8907651bc68b
+		summarizeBy: none
+		sourceColumn: reference_recall
+
+	column reference_f1
+		dataType: double
+		formatString: 0.0%
+		lineageTag: c6698566-7b4b-5cc6-a363-d515295e50a0
+		summarizeBy: none
+		sourceColumn: reference_f1
+
+	column status
+		dataType: string
+		lineageTag: dc6e9438-05e0-5534-9309-2bb545aa77f3
+		summarizeBy: none
+		sourceColumn: status
+
+	column open_incidents
+		dataType: int64
+		formatString: 0
+		lineageTag: 1f395cc7-fd0c-5cbe-b1d9-b7c8743cd992
+		summarizeBy: none
+		sourceColumn: open_incidents
+
+	partition dim_model = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(Web.Contents(DataUrl, [RelativePath = "dim_model.csv", Headers = if ApiKey = "" then [] else [Authorization = "Bearer " & ApiKey]]), [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Typed = Table.TransformColumnTypes(Promoted, {{"model_id", type text}, {"model_name", type text}, {"team", type text}, {"version", type text}, {"description", type text}, {"label_delay_days", Int64.Type}, {"reference_rows", Int64.Type}, {"reference_accuracy", type number}, {"reference_precision", type number}, {"reference_recall", type number}, {"reference_f1", type number}, {"status", type text}, {"open_incidents", Int64.Type}}, "en-US")
+				in
+				    Typed
