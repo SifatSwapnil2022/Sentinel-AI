@@ -91,10 +91,12 @@ What the dashboard reads; the shapes are defined in [`web/src/data/schema.ts`](.
 
 | | |
 | --- | --- |
-| `GET /v1/fleet` | Every model's overview row and every open incident. |
-| `GET /v1/models/{id}` | The model page: thirty days of estimated and measured metrics, per-feature drift, reference facts. `404` until the model has a fitted active version and traffic. |
+| `GET /v1/fleet` | Every model's overview row, every open incident, and incidents resolved within the window. |
+| `GET /v1/fleet/daily` | One row per model per day (traffic, estimate, reference, label coverage, latency, drift counts): what the slicers, heatmap and explore view aggregate. |
+| `GET /v1/models/{id}` | The model page: the window's daily estimated and measured metrics (90 days by default, `SENTINEL_WINDOW_DAYS`), per-feature drift and missing values, accuracy by segment over the last 7 days, reference facts. `404` until the model has a fitted active version and traffic. |
 | `GET /v1/incidents?status=open\|resolved\|all&model_id=…` | Incidents, newest first. |
-| `GET /v1/incidents/{id}` | One incident: the signals, the decomposition of the drop, ranked segments, example rows, traffic shifts. |
+| `GET /v1/incidents/{id}` | One incident: status, the signals, missing features, the decomposition of the drop, ranked segments, example rows, traffic shifts. |
+| `GET /v1/export/{table}.csv` | One table of the BI star schema as CSV (`dim_model`, `dim_date`, `fact_model_day`, `fact_feature_day`, `fact_segment`, `fact_incident`, `fact_incident_signal`). Columns are described in [bi.md](bi.md). |
 
 ## Health
 
@@ -179,6 +181,10 @@ the version to be `ready`, or name it explicitly.
 ### no-model-data
 
 `404`. The model has no computed documents yet.
+
+### unknown-table
+
+`404`. No export table with this name; the message lists the tables.
 
 ### unknown-incident
 

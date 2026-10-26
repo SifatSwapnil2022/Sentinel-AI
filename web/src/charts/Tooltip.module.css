@@ -1,0 +1,20 @@
+.tip {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  min-width: 140px;
+  max-width: 260px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--raised);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  font-size: var(--text-sm);
+  font-stretch: var(--stretch-data);
+  line-height: 1.4;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.18);
+}
+
+.tip strong {
+  display: block;
+  font-weight: 600;
+}

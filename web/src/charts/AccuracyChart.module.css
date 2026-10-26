@@ -165,3 +165,29 @@
   border-radius: 50%;
 }
 
+
+/* The previous period, for comparison: muted and dashed so it never reads as this period. */
+.compare {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+}
+
+/* Days being selected to zoom into. */
+.selection {
+  fill: var(--wash);
+  stroke: var(--line-strong);
+  stroke-dasharray: 3 2;
+}
+
+.marker {
+  stroke: var(--ink);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+
+.markerLabel {
+  fill: var(--muted);
+  font-size: var(--text-xs);
+}

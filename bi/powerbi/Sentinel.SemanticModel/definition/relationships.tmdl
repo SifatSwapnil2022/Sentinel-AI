@@ -1,0 +1,27 @@
+relationship 586cdaa0-a1da-546e-8bc3-70f88d54f2ff
+	fromColumn: fact_model_day.model_id
+	toColumn: dim_model.model_id
+
+relationship 4d3be8e9-8dc7-50ee-aeaf-6ba021a4f81d
+	fromColumn: fact_model_day.date
+	toColumn: dim_date.date
+
+relationship 8ab2dfef-1afc-52c2-88a9-cbb11edabba1
+	fromColumn: fact_feature_day.model_id
+	toColumn: dim_model.model_id
+
+relationship 5fc306c2-627f-5913-843b-71f0d0d1a4a7
+	fromColumn: fact_feature_day.date
+	toColumn: dim_date.date
+
+relationship cc46a0c4-179a-593d-b9ee-86effbd9c64d
+	fromColumn: fact_segment.model_id
+	toColumn: dim_model.model_id
+
+relationship d93da889-64a4-5499-b362-9575df20a189
+	fromColumn: fact_incident.model_id
+	toColumn: dim_model.model_id
+
+relationship 5a374f42-3376-59dc-ae22-bdac2f38ed3c
+	fromColumn: fact_incident_signal.incident_id
+	toColumn: fact_incident.incident_id

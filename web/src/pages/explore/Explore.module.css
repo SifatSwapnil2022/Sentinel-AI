@@ -1,0 +1,53 @@
+.builder {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-3) var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-tile);
+  background: var(--panel);
+}
+
+.builder label,
+.builder fieldset {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.builder legend {
+  padding: 0;
+  margin-bottom: 4px;
+}
+
+.builder button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.groupName {
+  width: 180px;
+  white-space: nowrap;
+}
+
+.barCell {
+  width: 100%;
+}
+
+.bar {
+  display: block;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--wash);
+}
+
+.bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+}

@@ -2,144 +2,163 @@
 
 ## Brief
 
-**Who:** ML engineers and on-call data scientists who own models in production.
-**Job:** answer two questions fast. Is any model getting worse right now, including before
-labels arrive? If so, where, and why?
-**Where it's used:** a desk monitor during an investigation, and a phone when an alert fires.
+**Who:** ML engineers and on-call data scientists who own models in production, and the
+analysts and leads who report on them.
+**Job:** answer three questions. Is any model getting worse right now, including before labels
+arrive? If so, where, and why? And how has the fleet done over the last week, month or quarter?
+**Where it's used:** a desk monitor during an investigation or a weekly review, and a phone
+when an alert fires.
 
-## Concept: readings with error bars
+Version 1 answered the first two questions for four models over 30 days. Version 2 covers eight
+models over 90 days, so it adds what BI tools are used for: slicers, period comparison, a table
+and an export behind every chart, a free-form explore view, and the data as a star schema for
+Power BI and Tableau.
 
-Sentinel's distinctive claim is that it *estimates* accuracy before labels exist. An estimate
-without its uncertainty is a guess, so every estimate in the interface is drawn as a **range**:
-a band with a tick at the estimate. Measured accuracy, when labels arrive, is drawn as a **hollow
-ring** in ink. The pair, band and ring, is the visual signature, and it appears everywhere a
-metric does: the fleet table, the model header, the main chart.
+## Concept: readings with error bars, laid out as a console
 
-The fleet page uses this to build a forest plot: one row per model, every band on the same
-accuracy axis, so a model whose band sits left of its reference line stands out without reading
-a number.
+Every estimate is drawn as a **range**: a band with a tick at the estimate. Measured accuracy,
+when labels arrive, is a **hollow ring**. The pair appears wherever a metric does: the forest
+plot on the overview, the model's accuracy chart, the incident's context chart.
+
+Around those marks, the layout is a monitoring console rather than a document: a sticky top bar,
+a sticky filter bar under it, and a 12-column grid of tiles. Each tile has the same header: a
+title, one line saying what is plotted and over which dates, then its actions (table view, CSV,
+full screen). The header is the only chrome; tiles have a 1px border and no shadow.
 
 ## Tokens
 
+All in `src/styles/tokens.css`.
+
 ### Colour
 
-| Role | Light | Dark | Notes |
-| --- | --- | --- | --- |
-| Field (page) | `#e9edea` | `#11171c` | Cool mineral grey-green; deliberately not cream, not near-black |
-| Sheet (surfaces, chart plane) | `#f8faf8` | `#182027` | |
-| Ink | `#16222e` | `#e3e9ee` | Text, measured values |
-| Graphite | `#566370` | `#9aa7b2` | Secondary text, axis labels |
-| Hairline | `#d3dad5` | `#26313a` | Rules, gridlines, table separators |
-| Estimate | `#2a78d6` | `#3987e5` | The band and tick; dataviz slot 1 |
-| Good | `#0ca30c` | same | Status only, always with icon and word |
-| Warning | `#fab219` | same | Status only; dark text on it |
-| Critical | `#d03b3b` | same | Status only |
+Dark by default, because the dashboard is read for long stretches and alongside terminals and
+log viewers. Light is one click away and follows the same rules.
 
-Validated with the dataviz palette checker. Estimate blue vs ink passes colour-blind separation
-(ΔE 34) and contrast. The checker flags ink as a *categorical* hue (too dark, low chroma); that is
-expected. Measured values are observations, not a peer series, and are told apart by shape
-(hollow ring vs filled band), as in statistical forecast plots where observed points are black.
+| Role | Light | Dark |
+| --- | --- | --- |
+| Canvas (page) | `#eef2f3` | `#0f1619` |
+| Panel (tiles) | `#ffffff` | `#151e22` |
+| Raised (controls, headers) | `#f5f8f9` | `#1c272c` |
+| Line | `#d8e0e3` | `#26343a` |
+| Ink | `#132026` | `#e3ebee` |
+| Muted | `#4f6169` | `#a0b0b7` |
+| Estimate (series 1) | `#2a78d6` | `#3987e5` |
+
+The neutrals lean slightly blue-green so the estimate blue sits in them without glowing. Neither
+mode uses pure black or white for the canvas.
+
+**Data colours are separate from interface colours** and each has one job:
+
+- *Categorical* (`--series-1` to `--series-8`): identity of a model or team, assigned in a fixed
+  order by the entity's position in the whole fleet, so filtering never repaints a model.
+  Validated with the dataviz palette checker on both panel colours (lightness band, chroma floor,
+  colour-blind separation of neighbours, contrast). More than eight series is not allowed;
+  the explore view has exactly eight models.
+- *Diverging* (`--div-neg-3` to `--div-pos-3`, grey midpoint): accuracy against reference.
+  Red is worse, blue is better. Used in the overview heatmap and the segment table.
+- *Sequential* (`--seq-0` to `--seq-6`, one blue): magnitude, for the drift heatmap.
+- *Status* (good, warning, critical): reserved for status, always with a shape (circle,
+  triangle, diamond) and a word. Never used as a series colour.
 
 ### Type
 
-- **Barlow** for interface text and headings. Its slightly squared, road-sign construction suits
-  an instrument; it is not the Inter or Space Grotesk most dashboards default to.
-- **Barlow Semi Condensed** for tables, axes and dense figures, with tabular numerals so columns
-  align. Large standalone readings keep proportional figures.
-- Scale (px): 12.5, 13.5, 15 (body), 18, 22, 28, 48 (the one reading per page).
-- Sentence case everywhere. No all-caps labels, no letter-spaced eyebrows.
+**Archivo**, variable, one family for everything. Its width axis does the work two families
+would: 84% width for tables, axes and tile notes, so a 13-column table fits; 108% for page
+titles, so they read as headings without a second typeface. Tabular numerals everywhere numbers
+line up. Base size 14px; scale 11.5, 12.5, 14, 16, 20, 26 and 36 for a single reading.
+
+Sentence case throughout. No all-caps labels, no eyebrows above headings, no monospace for
+numbers.
 
 ### Layout
 
 ```
-┌────────────┬──────────────────────────────────────────────────────────┐
-│ Sentinel   │ credit-risk v3                                           │
-│            │ Lending team. Labels arrive within 14 days.              │
-│ Models     │                                                          │
-│ ◆ credit…  │ Estimated accuracy      Measured accuracy                │
-│ ▲ claims…  │ 76.7%  ├──┼──┤          72.3%  ◯  on Oct 16              │
-│ ◆ fraud…   │ likely 75.3 to 78.2     18% of last week labelled        │
-│ ● churn…   │                                                          │
-│            │ ┌ 30 days ───────────────────────────────────────────┐   │
-│ Incidents  │ │ band ▒▒▒▒▒▒▒▒▒▒   rings ◯ ◯ ◯                      │   │
-│            │ └─────────────────────────────────────────────────────┘   │
-│            │ label coverage ▇▇▇▇▇▆▅▄▃▂▁                                │
-└────────────┴──────────────────────────────────────────────────────────┘
+┌ Sentinel  Overview  Models  Incidents 5  Explore  Reports        Demo data to Oct 24  Dark ┐
+├ Period [7][30][90]  Compare  Team ▾  Status ◆▲●  Find a model             Copy link     ┤
+│ Overview                                                                                   │
+│ Five of eight models need attention ...                                                    │
+│ ┌ Predictions ┬ Against reference ┬ Labels in ┬ p95 ┬ Drift days ┬ Open incidents ┐      │
+│ ┌ Estimated accuracy today ─────────┐ ┌ Incidents ──────────────────────────┐             │
+│ │ forest plot                       │ │ timeline, one lane per model        │             │
+│ ┌ Accuracy against reference, by day ───────────────────────────────────────┐             │
+│ │ heatmap: models × days, diverging                                        │             │
+│ ┌ Models ───────────────────────────────────────────────────────────────────┐             │
+│ │ sortable table                                                            │             │
+└────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-- Left-aligned content, 1,180px maximum, 16px gutters on phones. The sidebar collapses into a top
-  bar below 900px.
-- No cards with shadows. Sections are separated by space and a single hairline. Radius 6px on
-  controls only; data surfaces are square.
-- Status is a shape and a word: circle "Healthy", triangle "Warning", diamond "Critical".
+- Content is left-aligned up to 1,600px. Tiles span 3 to 12 columns at 1,100px and wider, and
+  stack below that. Phones get 16px gutters; the filter bar collapses into a "Filters (n)"
+  button and the nav into a menu.
+- Radius 3px on tiles, 4px on controls. Status is a shape and a word.
 
-### Motion
+## Interaction
 
-One moment: on a model page, the estimate band draws in from left to right once. Everything
-else responds only to the user (hover readouts, expanding a feature row). All of it is skipped
-under `prefers-reduced-motion`.
+**Slicers live in the address.** Period, custom dates, comparison, team, status and search are
+URL parameters, so a filtered view is a link. Navigation carries them from page to page; "Copy
+link" copies the current one. Only non-default values are written, so a plain visit has a plain
+URL.
 
-### Writing
+**Drill-down follows the data.** A heatmap cell opens the model at the two weeks around that
+day; a feature in the drift heatmap opens its distribution; a segment in "largest drops" opens
+that feature's table; a timeline bar opens the incident.
 
-Plain words for what people see: "Estimated accuracy", "Measured accuracy", "Labels received",
-"Likely range". Every incident page opens with one sentence saying what happened and where,
-built from the data. Errors say what failed and what to do. No arrows on links, no exclamation
-marks.
+**Brushing.** Dragging across the accuracy chart (or Enter on two days with the keyboard) sets
+the date slicer to that span.
 
-## The landing page
+**Every chart has a table view and a CSV.** The table view is also the accessible version of
+the chart. CSV files are named after what they contain and the dates, for example
+`sentinel_accuracy-gap_2026-09-25_2026-10-24.csv`.
 
-**Who:** someone deciding in two minutes whether Sentinel solves a real problem: a hiring
-engineer, a team lead, an ML engineer with a silent model. **Job:** make the problem concrete,
-show the product solving it, and prove the claims.
+**Comparison** draws the previous period of the same length as a dashed line or outlined bar,
+aligned day by day, and adds a "previous" column to tables. It only appears where the previous
+period is a fair comparison.
 
-The page argues in the order a reader doubts:
+Motion is limited to one moment and what the user causes: the estimate band on the accuracy
+chart draws in once from left to right, and everything else (hover readouts, the brush, opening a
+tile full screen) responds to the user. All of it is skipped under `prefers-reduced-motion`.
 
-1. **The problem, with real numbers.** The hero pairs two readings from the demo: what labels
-   say (the last day most are in) and what Sentinel estimates today. The gap is the problem.
-   The fraud model's real chart sits below it, rings appearing only as labels arrive.
-2. **Why existing tools miss it.** Three gaps, each with a source: label delay (card networks'
-   120-day dispute window), input drift being the wrong alarm (even label-free estimators assume
-   no concept drift), and averages hiding segment failures.
-3. **What Sentinel does**, one row per check: what it does, the method, and a link to the live
-   demo page that shows it working. Every figure in this section comes from the data documents
-   (`lib/story.ts`), never typed into copy, so regenerating the demo can't make the page wrong.
-   A case missing from the data (a live deployment with other models) is left out.
-4. **How it works**: the data path as an ordered list, so it reads in order to a screen reader
-   and reflows to a vertical pipeline on phones.
-5. **How it's checked**: measured figures only, each with its denominator.
-6. **How to run it, and what it doesn't do yet.** Stating limits is part of the argument.
+## Writing
 
-Same tokens, type and marks as the dashboard; the content column is centred because the page is
-read top to bottom. The primary button is ink on field: blue on white fails contrast in the dark
-theme, and blue is reserved for data marks. The dashboard moved to `/overview`.
+Plain words for what people see: "Estimated accuracy", "Labels in", "Likely 72.6 to 79.3%",
+"Against reference". Tile notes say what is plotted and the dates, nothing else. Incident pages
+open with one sentence saying what happened and where, built from the data. Empty states say
+what is missing ("No incidents for these filters between Sep 25 and Oct 24"). Errors say what
+failed and what to do.
+
+The landing page follows the same rule: it describes the problem and what the checks do, links
+each claim to a page in the demo, and lists what Sentinel does not do. Figures on it come from
+the data (`lib/story.ts`), so regenerating the demo cannot make the copy wrong.
 
 ## Review against generic defaults
 
-Checked before building, and changed where the first draft drifted toward a default:
+Before building, the plan was checked against what generated dashboards usually look like, and
+changed where it matched:
 
-- First draft used a dark theme with one bright accent, like the reference screenshot. Changed
-  to a light mineral field with a dark theme as an option; the dark theme keeps the same
-  restrained palette rather than adding neon.
-- First draft joined metadata with middle dots ("Lending · 14-day labels"). Rewritten as
-  sentences.
-- First draft put every number in a card. Replaced with a table and one hero reading; cards
-  are not used.
-- Monospace for numbers was considered and dropped in favour of tabular Barlow Semi Condensed.
+- **One bright accent on near-black** was the first idea for a dark theme. Replaced with blue-grey
+  neutrals and a data palette that only appears in charts; the interface itself has no accent
+  colour beyond the active-tab underline.
+- **KPI cards with big numbers and coloured deltas.** Kept the KPI row, because a fleet review
+  starts with totals, but as one bordered strip with a sparkline each, deltas in muted text, and
+  no icons.
+- **Identical rounded cards with shadows.** Tiles have a border, a small radius and no shadow,
+  and differ in width by what they hold.
+- **Two typefaces.** Replaced by one variable family using its width axis.
+- **Numbered steps (01, 02, 03)** on the landing page's list of problems. They are not a sequence,
+  so the numbers were removed.
 
 ## Changes after reviewing screenshots
 
-Every page was captured at desktop and phone sizes, in light and dark mode, and reviewed before
-shipping. What that review changed:
+Every page was captured at 1440px and 390px wide, in both themes, and reviewed:
 
-- **Concept-drift flags were unexplained.** They sat above days whose measured rings were inside
-  the daily band, because the signal uses a pooled week of labels the chart didn't show. Added a
-  separate "Check against labels" chart that draws exactly the comparison the signal makes.
-- **Phones scrolled sideways.** Grid items default to `min-width: auto`, so wide charts and
-  tables stretched the page; visually hidden labels inside scroll containers escaped them too.
-  Both fixed, and a Playwright test now fails any page that scrolls sideways.
-- **Shares of the drop were capped at 100%.** A segment can cost more than the total when others
-  improve. Replaced with each segment's cost in points.
-- Axis labels were clipped at the ends of the forest plot, model names wrapped, the reference
-  rule was too faint, and the coverage strip's label collided with the y-axis. All fixed.
-- Axe flagged horizontally scrolling tables as unreachable by keyboard. They are now focusable,
-  labelled regions.
+- The timeline's last date label and the heatmap's labels were clipped; both now reserve room.
+- The KPI for label coverage compared a period whose labels are complete with one still filling
+  in. It no longer shows a change, and says why.
+- The segments table and the "largest drops" list scrolled the page sideways on phones. Both are
+  now inside scrollable, focusable regions, and a Playwright test fails any page that scrolls
+  sideways.
+- Axe flagged charts whose SVG had `role="img"` but contained links (nested interactive
+  content). Those charts are now figures with the links reachable inside.
+- The incident page said "every part of the traffic got worse" for the data quality incident,
+  where accuracy actually went up. The explanation now depends on the kind of incident and the
+  direction of the change.

@@ -11,12 +11,13 @@ html {
 
 body {
   margin: 0;
-  background: var(--field);
+  background: var(--canvas);
   color: var(--ink);
   font-family: var(--font-ui);
   font-size: var(--text-md);
-  line-height: 1.5;
+  line-height: 1.45;
   font-kerning: normal;
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -29,16 +30,17 @@ h3 {
 }
 
 h1 {
-  font-size: var(--text-2xl);
-  letter-spacing: -0.01em;
+  font-size: var(--text-xl);
+  font-stretch: var(--stretch-heading);
+  letter-spacing: -0.005em;
 }
 
 h2 {
-  font-size: var(--text-xl);
+  font-size: var(--text-lg);
 }
 
 h3 {
-  font-size: var(--text-lg);
+  font-size: var(--text-md);
 }
 
 p {
@@ -84,7 +86,20 @@ table {
 
 .tabular {
   font-family: var(--font-data);
+  font-stretch: var(--stretch-data);
   font-variant-numeric: tabular-nums;
+}
+
+/* Charts' axis and label text runs condensed, like the tables. */
+svg text {
+  font-family: var(--font-data);
+  font-stretch: var(--stretch-data);
+}
+
+input,
+select,
+textarea {
+  font: inherit;
 }
 
 @media (prefers-reduced-motion: reduce) {

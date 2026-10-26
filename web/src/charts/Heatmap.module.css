@@ -1,0 +1,79 @@
+.wrap {
+  position: relative;
+  min-width: 0;
+}
+
+.labels {
+  position: absolute;
+  top: 0;
+  left: 0;
+  font-size: var(--text-sm);
+  font-stretch: var(--stretch-data);
+}
+
+.rowLabel {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  padding-right: var(--space-2);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.rowLabel a {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-decoration: none;
+}
+
+.rowLabel a:hover {
+  text-decoration: underline;
+}
+
+.svg {
+  position: absolute;
+  top: 0;
+  overflow: visible;
+}
+
+.cell {
+  cursor: pointer;
+}
+
+.cell[data-active="true"] {
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+
+.marker {
+  fill: var(--ink);
+}
+
+.tick {
+  font-size: 11px;
+  fill: var(--muted);
+}
+
+.legend {
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--muted);
+  font-stretch: var(--stretch-data);
+}
+
+.legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.swatch {
+  width: 14px;
+  height: 10px;
+  border-radius: 2px;
+}

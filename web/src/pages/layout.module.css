@@ -1,20 +1,24 @@
-/* Shared page structure. Pages are documents: a header, a lead, then sections. */
+/* Shared page structure: a header strip, then a 12-column grid of tiles. */
 
 .page {
-  max-width: var(--content-max);
   display: grid;
-  gap: var(--space-7);
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-5) var(--space-8);
+  max-width: var(--content-max);
 }
 
-.page > *,
-.header > *,
-.section > * {
+.page > * {
   min-width: 0;
 }
 
 .header {
   display: grid;
-  gap: var(--space-3);
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.header > * {
+  min-width: 0;
 }
 
 .crumbs {
@@ -22,7 +26,7 @@
   flex-wrap: wrap;
   gap: var(--space-2);
   font-size: var(--text-sm);
-  color: var(--graphite);
+  color: var(--muted);
 }
 
 .crumbs a {
@@ -33,137 +37,129 @@
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--space-3) var(--space-4);
+  gap: var(--space-2) var(--space-4);
 }
 
 .title {
-  font-family: var(--font-data);
-  font-weight: 600;
+  font-weight: 650;
 }
 
 .version {
-  font-family: var(--font-data);
-  font-size: var(--text-lg);
-  color: var(--graphite);
+  font-size: var(--text-md);
+  color: var(--muted);
 }
 
 .lead {
-  max-width: 68ch;
-  font-size: var(--text-lg);
-  line-height: 1.5;
+  max-width: 90ch;
+  color: var(--muted);
 }
 
 .meta {
-  max-width: 68ch;
-  color: var(--graphite);
+  max-width: 90ch;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--space-4);
 }
 
 .section {
   display: grid;
-  gap: var(--space-4);
-  padding-top: var(--space-5);
-  border-top: 1px solid var(--hairline);
+  gap: var(--space-3);
+  min-width: 0;
 }
 
-.sectionHead {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2) var(--space-5);
+.section > * {
+  min-width: 0;
 }
 
-.sectionNote {
-  max-width: 68ch;
-  color: var(--graphite);
-  font-size: var(--text-sm);
+.empty {
+  padding: var(--space-6) var(--space-4);
+  color: var(--muted);
+  text-align: center;
 }
 
-.tabs {
-  display: flex;
-  gap: var(--space-1);
-  border-bottom: 1px solid var(--hairline);
-}
-
-.tab {
-  padding: var(--space-2) var(--space-3);
-  margin-bottom: -1px;
-  border-bottom: 2px solid transparent;
-  color: var(--graphite);
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.tab:hover {
-  color: var(--ink);
-}
-
-.tab[aria-current="page"] {
-  color: var(--ink);
-  border-bottom-color: var(--ink);
-}
-
-/* Data tables: hairline rows, no zebra, numbers right-aligned in the data face. */
-
+/* Wide tables scroll sideways inside their tile instead of widening the page. */
 .tableWrap {
-  position: relative; /* contains visually-hidden labels, which are absolutely positioned */
+  position: relative;
+  max-width: 100%;
   overflow-x: auto;
 }
 
+.tableWrap:focus-visible {
+  outline-offset: -2px;
+}
+
+/* Tables inside tiles: condensed figures, hairlines, sortable headers. */
 .table {
   width: 100%;
-  font-size: var(--text-md);
-}
-
-.table th {
-  text-align: left;
-  font-weight: 500;
   font-size: var(--text-sm);
-  color: var(--graphite);
-  padding: var(--space-2) var(--space-3) var(--space-2) 0;
-  border-bottom: 1px solid var(--hairline-strong);
-  vertical-align: bottom;
-  white-space: nowrap;
+  font-stretch: var(--stretch-data);
 }
 
+.table th,
 .table td {
-  padding: var(--space-3) var(--space-3) var(--space-3) 0;
-  border-bottom: 1px solid var(--hairline);
+  padding: 7px var(--space-3) 7px 0;
+  text-align: left;
   vertical-align: middle;
-}
-
-.table .num {
-  text-align: right;
-  font-family: var(--font-data);
-  font-variant-numeric: tabular-nums;
+  border-bottom: 1px solid var(--line);
   white-space: nowrap;
 }
 
-.table th.num {
-  font-family: var(--font-ui);
+.table thead th {
+  color: var(--muted);
+  font-weight: 500;
+  border-bottom-color: var(--line-strong);
 }
 
-.data {
-  font-family: var(--font-data);
+.table tbody tr:hover {
+  background: var(--wash);
 }
 
-.quiet {
-  color: var(--graphite);
+.num {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
 }
 
-.details summary {
+.sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
   cursor: pointer;
-  color: var(--graphite);
-  font-size: var(--text-sm);
-  width: fit-content;
 }
 
-.details[open] summary {
-  margin-bottom: var(--space-3);
+.sort:hover {
+  color: var(--ink);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 760px) {
   .page {
-    gap: var(--space-6);
+    padding: var(--space-4) var(--space-4) var(--space-7);
   }
+}
+
+/* A button that reads as a link: actions inside tables that change the view, not the page. */
+.linkButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: var(--hairline-strong);
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.linkButton:hover {
+  text-decoration-color: currentColor;
 }

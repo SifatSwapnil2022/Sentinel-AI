@@ -1,0 +1,129 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.2.0/schema.json",
+  "name": "13d7757273ed561e909a",
+  "position": {
+    "x": 796,
+    "y": 214,
+    "z": 0,
+    "width": 464,
+    "height": 490
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "dim_model"
+                    }
+                  },
+                  "Property": "model_name"
+                }
+              },
+              "queryRef": "dim_model.model_name",
+              "nativeQueryRef": "model_name"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "dim_model"
+                    }
+                  },
+                  "Property": "status"
+                }
+              },
+              "queryRef": "dim_model.status",
+              "nativeQueryRef": "status"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_model_day"
+                    }
+                  },
+                  "Property": "Estimated accuracy"
+                }
+              },
+              "queryRef": "fact_model_day.Estimated accuracy",
+              "nativeQueryRef": "Estimated accuracy"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_model_day"
+                    }
+                  },
+                  "Property": "Accuracy gap (points)"
+                }
+              },
+              "queryRef": "fact_model_day.Accuracy gap (points)",
+              "nativeQueryRef": "Accuracy gap (points)"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_model_day"
+                    }
+                  },
+                  "Property": "Predictions"
+                }
+              },
+              "queryRef": "fact_model_day.Predictions",
+              "nativeQueryRef": "Predictions"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_incident"
+                    }
+                  },
+                  "Property": "Open incidents"
+                }
+              },
+              "queryRef": "fact_incident.Open incidents",
+              "nativeQueryRef": "Open incidents"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true,
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Models'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

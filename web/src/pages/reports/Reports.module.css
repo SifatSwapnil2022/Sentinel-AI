@@ -1,0 +1,80 @@
+.steps {
+  margin: 0;
+  padding-left: 1.2em;
+  display: grid;
+  gap: var(--space-2);
+  max-width: 70ch;
+}
+
+.steps code,
+.note code,
+.schema,
+.description code {
+  font-stretch: var(--stretch-data);
+}
+
+.note {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-sm);
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.description {
+  min-width: 280px;
+  white-space: normal;
+}
+
+.schema {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: center;
+  margin-bottom: var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.dims {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.dim,
+.fact {
+  display: inline-block;
+  padding: 3px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  background: var(--raised);
+  white-space: nowrap;
+}
+
+.dim {
+  border-color: var(--estimate);
+}
+
+.facts {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 var(--space-4);
+  border-left: 1px solid var(--line-strong);
+  display: grid;
+  gap: 6px;
+}
+
+.facts li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px var(--space-3);
+}
+
+.joins {
+  color: var(--muted);
+}
+
+@media (max-width: 640px) {
+  .schema {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

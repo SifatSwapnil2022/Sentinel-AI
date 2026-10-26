@@ -1,0 +1,48 @@
+.wrap {
+  position: relative;
+  min-width: 0;
+}
+
+.grid {
+  stroke: var(--line);
+}
+
+.rule {
+  stroke: var(--line);
+}
+
+.tick {
+  font-size: 11px;
+  fill: var(--muted);
+}
+
+.laneLabel {
+  font-size: var(--text-sm);
+  fill: var(--ink);
+}
+
+.bar {
+  cursor: pointer;
+}
+
+.bar[data-severity="critical"] {
+  fill: var(--critical);
+}
+
+.bar[data-severity="warning"] {
+  fill: var(--warning);
+}
+
+/* Resolved incidents are outlined, not filled: history, not a current problem. */
+.bar[data-status="resolved"] {
+  fill: transparent;
+  stroke-width: 1.5;
+}
+
+.bar[data-status="resolved"][data-severity="critical"] {
+  stroke: var(--critical);
+}
+
+.bar[data-status="resolved"][data-severity="warning"] {
+  stroke: var(--warning);
+}

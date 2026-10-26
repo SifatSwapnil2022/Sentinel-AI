@@ -1,0 +1,77 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.2.0/schema.json",
+  "name": "6bc0d54d9a2151cd8e2a",
+  "position": {
+    "x": 650,
+    "y": 88,
+    "z": 0,
+    "width": 610,
+    "height": 260
+  },
+  "visual": {
+    "visualType": "clusteredBarChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_incident"
+                    }
+                  },
+                  "Property": "kind"
+                }
+              },
+              "queryRef": "fact_incident.kind",
+              "nativeQueryRef": "kind"
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_incident"
+                    }
+                  },
+                  "Property": "Incidents"
+                }
+              },
+              "queryRef": "fact_incident.Incidents",
+              "nativeQueryRef": "Incidents"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true,
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Incidents by first signal'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

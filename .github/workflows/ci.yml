@@ -125,7 +125,10 @@ jobs:
       # Regenerate from the engine: the committed data must be exactly what the code produces,
       # and must satisfy the dashboard's schemas.
       - run: make fixtures
-      - run: git diff --exit-code -- web/public/data
+      - run: git diff --exit-code -- web/public/data web/public/reports bi
+      # The Power BI project's JSON against Microsoft's published schemas.
+      - run: git clone --depth 1 --filter=blob:none --sparse https://github.com/microsoft/json-schemas.git /tmp/json-schemas && git -C /tmp/json-schemas sparse-checkout set fabric
+      - run: uv run --with jsonschema python bi/validate_powerbi.py /tmp/json-schemas
       - run: npm ci
         working-directory: web
       - run: npx vitest run src/data/schema.test.ts

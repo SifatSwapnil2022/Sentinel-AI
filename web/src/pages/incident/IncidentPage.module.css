@@ -1,0 +1,121 @@
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+
+.timeline li {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: var(--space-4);
+  padding: var(--space-3) 0 var(--space-3) var(--space-1);
+  position: relative;
+}
+
+.timeline li + li {
+  border-top: 1px solid var(--line);
+}
+
+.when {
+  font-stretch: var(--stretch-data);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.signalTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 500;
+}
+
+.conditions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+}
+
+.conditions li {
+  padding: 1px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  background: var(--raised);
+  font-stretch: var(--stretch-data);
+  white-space: nowrap;
+}
+
+.share {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 160px;
+}
+
+.shareBar {
+  display: block;
+  height: 10px;
+  min-width: 2px;
+  flex: none;
+  background: var(--ink);
+  border-radius: 0 2px 2px 0;
+}
+
+.shareValue {
+  font-stretch: var(--stretch-data);
+  font-variant-numeric: tabular-nums;
+}
+
+.callout {
+  max-width: 68ch;
+  padding: var(--space-3) var(--space-4);
+  border-left: 3px solid var(--estimate);
+  background: var(--raised);
+}
+
+.samples td,
+.samples th {
+  font-size: var(--text-sm);
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-2);
+}
+
+.samples tr[data-wrong="true"] td:first-child {
+  box-shadow: inset 3px 0 0 var(--critical);
+  padding-left: var(--space-2);
+}
+
+.state {
+  padding: 1px 8px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--line-strong);
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.state[data-open="true"] {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+.rule {
+  margin: 2px 0 0;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.explain {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--muted);
+  max-width: 100ch;
+}
+
+.more {
+  font-size: var(--text-sm);
+  align-self: center;
+  margin-right: var(--space-2);
+}

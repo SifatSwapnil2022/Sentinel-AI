@@ -37,7 +37,7 @@ export function BridgeChart({ reference, performanceEffect, mixEffect, current, 
     { key: "ref", label: "Reference accuracy", from: x.domain()[0] ?? 0, to: reference, total: true, text: percent(reference) },
     {
       key: "perf",
-      label: "Model got worse within segments",
+      label: performanceEffect < 0 ? "Worse within segments" : "Better within segments",
       from: reference,
       to: afterPerformance,
       total: false,
@@ -45,7 +45,7 @@ export function BridgeChart({ reference, performanceEffect, mixEffect, current, 
     },
     {
       key: "mix",
-      label: "Traffic moved between segments",
+      label: "Change in traffic mix",
       from: afterPerformance,
       to: afterPerformance + mixEffect,
       total: false,
@@ -67,7 +67,7 @@ export function BridgeChart({ reference, performanceEffect, mixEffect, current, 
         width={width}
         height={rows.length * ROW + 8}
         role="img"
-        aria-label={`From ${percent(reference)} to ${percent(current)}: ${points(performanceEffect)} from the model doing worse within segments, ${points(mixEffect)} from the traffic mix.`}
+        aria-label={`From ${percent(reference)} to ${percent(current)}: ${points(performanceEffect)} from accuracy within segments, ${points(mixEffect)} from the traffic mix.`}
       >
         {rows.map((r, i) => {
           const left = x(Math.min(r.from, r.to));

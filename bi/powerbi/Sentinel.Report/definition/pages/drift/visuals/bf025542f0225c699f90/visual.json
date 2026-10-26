@@ -1,0 +1,105 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.2.0/schema.json",
+  "name": "bf025542f0225c699f90",
+  "position": {
+    "x": 20,
+    "y": 92,
+    "z": 0,
+    "width": 620,
+    "height": 612
+  },
+  "visual": {
+    "visualType": "pivotTable",
+    "query": {
+      "queryState": {
+        "Rows": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "dim_model"
+                    }
+                  },
+                  "Property": "model_name"
+                }
+              },
+              "queryRef": "dim_model.model_name",
+              "nativeQueryRef": "model_name"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_feature_day"
+                    }
+                  },
+                  "Property": "feature"
+                }
+              },
+              "queryRef": "fact_feature_day.feature",
+              "nativeQueryRef": "feature"
+            }
+          ]
+        },
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_feature_day"
+                    }
+                  },
+                  "Property": "Feature drift days"
+                }
+              },
+              "queryRef": "fact_feature_day.Feature drift days",
+              "nativeQueryRef": "Feature drift days"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_feature_day"
+                    }
+                  },
+                  "Property": "Highest missing rate"
+                }
+              },
+              "queryRef": "fact_feature_day.Highest missing rate",
+              "nativeQueryRef": "Highest missing rate"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true,
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Drift days and missing values by feature'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

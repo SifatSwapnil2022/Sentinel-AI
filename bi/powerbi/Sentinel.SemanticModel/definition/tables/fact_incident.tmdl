@@ -1,0 +1,110 @@
+/// One row per incident: kind, severity, status, dates and accuracy change.
+table fact_incident
+	lineageTag: a7e87bef-97ca-5fde-b8da-bae7981ccec3
+
+	measure 'Incidents' = COUNTROWS ( fact_incident )
+		formatString: 0
+		lineageTag: 32b87f39-8c27-5486-8c75-72346e7c10b9
+
+	measure 'Open incidents' = CALCULATE ( COUNTROWS ( fact_incident ), fact_incident[status] = "open" )
+		formatString: 0
+		lineageTag: 41b229b0-b407-5e7f-a408-dffa465490a4
+
+	measure 'Average days open' = AVERAGE ( fact_incident[days_open] )
+		formatString: 0.0
+		lineageTag: c2b15a27-ad24-598f-85d3-aad9d41313c5
+
+	column incident_id
+		dataType: string
+		lineageTag: 8dcb7866-13d0-5f4e-bb96-c20931c7bd37
+		summarizeBy: none
+		sourceColumn: incident_id
+
+	column model_id
+		dataType: string
+		lineageTag: 92c7d850-e3ae-5e84-b6c2-573c417f8442
+		summarizeBy: none
+		sourceColumn: model_id
+
+	column kind
+		dataType: string
+		lineageTag: 85466604-438c-5587-89ca-5e5f1f756595
+		summarizeBy: none
+		sourceColumn: kind
+
+	column title
+		dataType: string
+		lineageTag: 710d1518-6157-5235-ada3-90a8cc1de0c9
+		summarizeBy: none
+		sourceColumn: title
+
+	column severity
+		dataType: string
+		lineageTag: a6a551d7-5d20-5068-b2c5-2742f4c35118
+		summarizeBy: none
+		sourceColumn: severity
+
+	column status
+		dataType: string
+		lineageTag: 8bc46d4f-442d-5166-a832-f632d22f45fb
+		summarizeBy: none
+		sourceColumn: status
+
+	column opened_on
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		lineageTag: 30ab04ed-8488-5f77-afdf-dbb39eee77fd
+		summarizeBy: none
+		sourceColumn: opened_on
+		annotation UnderlyingDateTimeDataType = Date
+
+	column resolved_on
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		lineageTag: 6c4d847e-ff6d-50fe-a0f3-10385adc8616
+		summarizeBy: none
+		sourceColumn: resolved_on
+		annotation UnderlyingDateTimeDataType = Date
+
+	column days_open
+		dataType: int64
+		formatString: 0
+		lineageTag: b34937b1-0145-5dea-9a0b-5bdf5f524d97
+		summarizeBy: none
+		sourceColumn: days_open
+
+	column metric_basis
+		dataType: string
+		lineageTag: 5e9daafa-cae9-51c3-b142-c587639ead50
+		summarizeBy: none
+		sourceColumn: metric_basis
+
+	column metric_reference
+		dataType: double
+		formatString: 0.0%
+		lineageTag: 057c765d-4b81-50d6-933f-99e4e07815d9
+		summarizeBy: none
+		sourceColumn: metric_reference
+
+	column metric_current
+		dataType: double
+		formatString: 0.0%
+		lineageTag: 4bf700e2-b153-5d9c-af43-fe643abae3a5
+		summarizeBy: none
+		sourceColumn: metric_current
+
+	column top_segment
+		dataType: string
+		lineageTag: a3701159-5918-5c75-8158-cacbccfe8c13
+		summarizeBy: none
+		sourceColumn: top_segment
+
+	partition fact_incident = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(Web.Contents(DataUrl, [RelativePath = "fact_incident.csv", Headers = if ApiKey = "" then [] else [Authorization = "Bearer " & ApiKey]]), [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Typed = Table.TransformColumnTypes(Promoted, {{"incident_id", type text}, {"model_id", type text}, {"kind", type text}, {"title", type text}, {"severity", type text}, {"status", type text}, {"opened_on", type date}, {"resolved_on", type date}, {"days_open", Int64.Type}, {"metric_basis", type text}, {"metric_reference", type number}, {"metric_current", type number}, {"top_segment", type text}}, "en-US")
+				in
+				    Typed

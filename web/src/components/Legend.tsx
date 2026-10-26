@@ -1,6 +1,6 @@
 import styles from "./Legend.module.css";
 
-type Key = "band" | "ring" | "reference" | "line" | "flag" | "bar" | "barReference";
+type Key = "band" | "ring" | "reference" | "line" | "flag" | "bar" | "barReference" | "previous";
 
 const LABEL_FOR: Record<Key, string> = {
   band: "Estimated, with likely range",
@@ -10,6 +10,7 @@ const LABEL_FOR: Record<Key, string> = {
   flag: "Measured outside the estimate",
   bar: "Current",
   barReference: "Reference",
+  previous: "Previous period",
 };
 
 /** Legend keys mirror the marks they name. */
@@ -26,6 +27,7 @@ export function Legend({ items, labels }: { items: Key[]; labels?: Partial<Recor
               </>
             )}
             {item === "line" && <line x1="1" x2="21" y1="7" y2="7" className={styles.tick} />}
+            {item === "previous" && <line x1="1" x2="21" y1="7" y2="7" className={styles.previous} />}
             {item === "ring" && <circle cx="11" cy="7" r="4.5" className={styles.ring} />}
             {item === "reference" && <line x1="11" x2="11" y1="1" y2="13" className={styles.reference} />}
             {item === "flag" && <path d="M11 2 16 7 11 12 6 7z" className={styles.flag} />}

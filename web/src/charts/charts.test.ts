@@ -1,6 +1,6 @@
 import { modelSchema, type ModelSummary } from "../data/schema";
-import { accuracyDomain } from "../pages/FleetPage";
-import { latestTrustworthy } from "../pages/ModelPage";
+import { accuracyDomain } from "../pages/overview/AccuracyRanges";
+import { latestTrustworthy } from "../pages/model/PerformanceTab";
 import { fixture } from "../test/render";
 import { MIN_COVERAGE_FOR_MEASURED, toPoints } from "./AccuracyChart";
 import { driftScore } from "./DriftSpark";
@@ -42,7 +42,11 @@ describe("driftScore", () => {
 
 it("accuracyDomain pads, snaps to 5 points and stays inside [0, 1]", () => {
   const m = (lower: number, upper: number, reference: number) =>
-    ({ estimate: { value: (lower + upper) / 2, lower, upper }, referenceAccuracy: reference }) as ModelSummary;
+    ({
+      estimate: { value: (lower + upper) / 2, lower, upper },
+      referenceAccuracy: reference,
+      measured: { value: null, asOf: null, coverage: 0 },
+    }) as ModelSummary;
   expect(accuracyDomain([m(0.68, 0.77, 0.73), m(0.77, 0.81, 0.89)])).toEqual([0.65, 0.9]);
   expect(accuracyDomain([m(0.001, 0.02, 0.01), m(0.97, 0.995, 0.99)])).toEqual([0, 1]);
   expect(accuracyDomain([])).toEqual([0.5, 1]);

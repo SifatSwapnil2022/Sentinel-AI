@@ -2,7 +2,7 @@
 .PHONY: help install fmt lint typecheck test cov parity check fixtures up demo down clean
 
 PARITY_ENV := .parity
-PY := core server sdk demo
+PY := core server sdk demo bi
 
 help: ## List targets
 	@grep -E '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | awk -F':.*?## ' '{printf "  %-10s %s\n", $$1, $$2}'
@@ -33,8 +33,9 @@ parity: ## Compare against Evidently and NannyML in a separate environment
 	NML_DISABLE_USAGE_LOGGING=1 $(PARITY_ENV)/bin/python -m pytest core/tests/parity \
 		-p no:cacheprovider --import-mode=importlib
 
-fixtures: ## Rebuild the dashboard demo data from the engine
+fixtures: ## Rebuild the dashboard demo data, BI tables and BI reports from the engine
 	uv run python demo/build_fixtures.py --out web/public/data
+	uv run python bi/build_bi.py
 
 up: ## Run the stack in Docker: dashboard on http://localhost:8080
 	docker compose up -d --build --wait

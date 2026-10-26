@@ -15,7 +15,9 @@ export function driftScore(statistic: number, threshold: number, isPValue: boole
 }
 
 export function DriftSpark({ feature, width = 140, height = 28 }: { feature: Feature; width?: number; height?: number }) {
-  const scores = feature.series.map((s) => driftScore(s.statistic, feature.threshold, feature.isPValue));
+  const scores = feature.series
+    .filter((s): s is typeof s & { statistic: number } => s.statistic !== null)
+    .map((s) => driftScore(s.statistic, feature.threshold, feature.isPValue));
   const x = scaleLinear().domain([0, Math.max(scores.length - 1, 1)]).range([2, width - 2]);
   const y = scaleLinear().domain([0, CAP]).range([height - 2, 2]);
   const path = line<number>()

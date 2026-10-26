@@ -1,0 +1,115 @@
+/* KPI strip: one row of figures, each against the previous period. */
+.kpis {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-tile);
+  overflow: hidden;
+}
+
+.kpi {
+  display: grid;
+  grid-template-rows: auto auto auto 1fr;
+  gap: 2px;
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  background: var(--panel);
+}
+
+.kpiLabel {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.kpiValue {
+  font-size: var(--text-2xl);
+  font-weight: 550;
+  font-stretch: 92%;
+  line-height: 1.15;
+}
+
+.kpiChange {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  font-stretch: var(--stretch-data);
+}
+
+.kpiSpark {
+  align-self: end;
+  padding-top: var(--space-2);
+}
+
+/* Forest plot of today's estimates. */
+.ranges {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.rangeRow {
+  display: grid;
+  grid-template-columns: 200px 64px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+  height: 30px;
+  border-bottom: 1px solid var(--line);
+}
+
+.rangeName {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: var(--text-sm);
+}
+
+.rangeName a {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rangeValue {
+  text-align: right;
+  font-size: var(--text-sm);
+  font-stretch: var(--stretch-data);
+}
+
+.rangeAxis {
+  display: grid;
+  grid-template-columns: 200px 64px minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.rangeAxis > :first-child {
+  grid-column: 3;
+}
+
+.axisTick {
+  font-size: 11px;
+  fill: var(--muted);
+}
+
+@media (max-width: 1199px) {
+  .kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rangeRow,
+  .rangeAxis {
+    grid-template-columns: 120px 52px minmax(0, 1fr);
+  }
+}

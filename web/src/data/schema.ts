@@ -1,7 +1,7 @@
 /**
  * Runtime schemas for everything the dashboard reads. Data is validated at the boundary so a
  * malformed payload fails loudly in one place instead of rendering NaN deep inside a chart.
- * The same shapes will be served by the API in step 3.
+ * The static demo and the API serve the same shapes (the server's parity test holds them to it).
  */
 import { z } from "zod";
 
@@ -9,12 +9,13 @@ const isoDate = z.iso.date();
 const unit = z.number().min(0).max(1);
 const nullableUnit = unit.nullable();
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export const severitySchema = z.enum(["warning", "critical"]);
 export const statusSchema = z.enum(["healthy", "warning", "critical"]);
 export const signalKindSchema = z.enum([
   "concept_drift",
+  "data_quality",
   "estimate_drop",
   "multivariate",
   "input_drift",
@@ -52,13 +53,17 @@ export const modelSummarySchema = z.object({
   trend: z.array(unit),
 });
 
+export const incidentStatusSchema = z.enum(["open", "resolved"]);
+
 export const incidentRefSchema = z.object({
   id: z.string(),
   modelId: z.string(),
   kind: signalKindSchema,
   title: z.string(),
   severity: severitySchema,
+  status: incidentStatusSchema,
   openedOn: isoDate,
+  resolvedOn: isoDate.nullable(),
 });
 
 export const fleetSchema = z.object({
@@ -67,6 +72,32 @@ export const fleetSchema = z.object({
   windowDays: z.number().int().positive(),
   models: z.array(modelSummarySchema),
   alerts: z.array(incidentRefSchema),
+  resolved: z.array(incidentRefSchema),
+});
+
+/** One row per model per day: what slicers, heatmaps and the explore view work from. */
+export const dailyRowSchema = z.object({
+  modelId: z.string(),
+  team: z.string(),
+  date: isoDate,
+  rows: z.number().int().nonnegative(),
+  estimate: unit,
+  lower: unit,
+  upper: unit,
+  reference: nullableUnit,
+  measured: nullableUnit,
+  labelCoverage: unit,
+  p95LatencyMs: z.number().nonnegative(),
+  driftedFeatures: z.number().int().nonnegative(),
+  totalFeatures: z.number().int().nonnegative(),
+  multivariateDrifted: z.boolean(),
+  conceptFlag: z.boolean().nullable(),
+  missingJump: z.number(),
+});
+
+export const dailySchema = z.object({
+  schemaVersion: z.literal(SCHEMA_VERSION),
+  rows: z.array(dailyRowSchema),
 });
 
 // --------------------------------------------------------------------------- model
@@ -101,6 +132,7 @@ export const daySchema = z.object({
     drifted: z.boolean(),
   }),
   p95LatencyMs: z.number().nonnegative(),
+  dataQuality: z.record(z.string(), z.object({ nullRate: unit, referenceNullRate: unit })),
 });
 
 export const featureSchema = z.object({
@@ -110,7 +142,14 @@ export const featureSchema = z.object({
   threshold: z.number(),
   isPValue: z.boolean(),
   series: z.array(
-    z.object({ date: isoDate, statistic: z.number(), drifted: z.boolean(), psi: z.number() }),
+    z.object({
+      date: isoDate,
+      /** Null on a day the feature was entirely missing, so no test could run. */
+      statistic: z.number().nullable(),
+      drifted: z.boolean(),
+      psi: z.number().nullable(),
+      nullRate: nullableUnit,
+    }),
   ),
   latest: z.object({
     statistic: z.number(),
@@ -118,6 +157,7 @@ export const featureSchema = z.object({
     psi: z.number(),
     nullRate: unit,
   }),
+  referenceNullRate: unit,
   histogram: z.object({
     bins: z.array(z.string()),
     reference: z.array(unit),
@@ -138,6 +178,23 @@ export const modelSchema = z.object({
   calibration: z.object({ applied: z.boolean(), eceBefore: unit, eceAfter: unit }),
   days: z.array(daySchema).min(1),
   features: z.array(featureSchema),
+  segments: z.object({
+    window: z.object({ to: isoDate, rows: z.number().int().nonnegative() }),
+    rows: z.array(
+      z.object({
+        feature: z.string(),
+        value: z.string(),
+        nReference: z.number().int().nonnegative(),
+        nCurrent: z.number().int().nonnegative(),
+        shareReference: unit,
+        shareCurrent: unit,
+        referenceAccuracy: nullableUnit,
+        estimatedAccuracy: nullableUnit,
+        measuredAccuracy: nullableUnit,
+        labelled: z.number().int().nonnegative(),
+      }),
+    ),
+  }),
   alertIds: z.array(z.string()),
 });
 
@@ -163,7 +220,9 @@ export const incidentSchema = z.object({
   kind: signalKindSchema,
   title: z.string(),
   severity: severitySchema,
+  status: incidentStatusSchema,
   openedOn: isoDate,
+  resolvedOn: isoDate.nullable(),
   window: z.object({ from: isoDate, to: isoDate, rows: z.number().int().nonnegative() }),
   metric: z.object({
     name: metricNameSchema,
@@ -202,6 +261,9 @@ export const incidentSchema = z.object({
       }),
     )
     .min(1),
+  missingFeatures: z.array(
+    z.object({ name: z.string(), nullRate: unit, referenceNullRate: unit }),
+  ),
   driftedFeatures: z.array(
     z.object({
       name: z.string(),
@@ -215,6 +277,9 @@ export const incidentSchema = z.object({
 });
 
 export type Fleet = z.infer<typeof fleetSchema>;
+export type Daily = z.infer<typeof dailySchema>;
+export type DailyRow = z.infer<typeof dailyRowSchema>;
+export type IncidentStatus = z.infer<typeof incidentStatusSchema>;
 export type ModelSummary = z.infer<typeof modelSummarySchema>;
 export type IncidentRef = z.infer<typeof incidentRefSchema>;
 export type Model = z.infer<typeof modelSchema>;

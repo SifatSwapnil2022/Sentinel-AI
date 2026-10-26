@@ -1,86 +1,189 @@
-/* Design tokens. Values and rationale: web/DESIGN.md. */
+/* Design tokens, v2. Rationale in web/DESIGN.md.
+   Light values first; dark applies by default (theme.ts) and when the OS asks for it under
+   "Auto". Older names (--field, --sheet, --graphite, --hairline) are kept as aliases so every
+   component reads the same palette. */
 
 :root {
   color-scheme: light;
 
-  --field: #e9edea;
-  --sheet: #f8faf8;
-  --ink: #16222e;
-  --graphite: #566370;
-  --hairline: #d3dad5;
-  --hairline-strong: #b9c3bc;
-  --wash: rgb(22 34 46 / 0.045);
+  /* surfaces */
+  --canvas: #eef2f3;
+  --panel: #ffffff;
+  --raised: #f5f8f9;
+  --line: #d8e0e3;
+  --line-strong: #bcc8cd;
+  --wash: rgb(19 32 38 / 0.05);
+  --overlay: rgb(19 32 38 / 0.45);
 
+  /* text */
+  --ink: #132026;
+  --muted: #4f6169;
+  --faint: #6f8088;
+
+  /* data: estimate is categorical slot 1 */
   --estimate: #2a78d6;
   --estimate-band: rgb(42 120 214 / 0.16);
-  --estimate-band-strong: rgb(42 120 214 / 0.28);
+  --estimate-band-strong: rgb(42 120 214 / 0.3);
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #6250d6;
+  --series-8: #e34948;
 
+  /* diverging: worse (red) to better (blue) around a neutral gray */
+  --div-neg-3: #b8292e;
+  --div-neg-2: #dc6b62;
+  --div-neg-1: #f1b3a8;
+  --div-mid: #eceeee;
+  --div-pos-1: #b7d3f6;
+  --div-pos-2: #6da7ec;
+  --div-pos-3: #256abf;
+
+  /* sequential: none to a lot */
+  --seq-0: #eef3f8;
+  --seq-1: #cde2fb;
+  --seq-2: #9ec5f4;
+  --seq-3: #6da7ec;
+  --seq-4: #3987e5;
+  --seq-5: #256abf;
+  --seq-6: #184f95;
+
+  /* status: reserved, always with a shape and a word */
   --good: #0ca30c;
   --warning: #fab219;
   --critical: #d03b3b;
-  --good-text: #006300;
+  --good-text: #0a7a0a;
+  --warning-text: #8a5c00;
   --critical-text: #b22a2a;
-  --on-warning: #16222e;
+  --on-warning: #132026;
 
   --focus: #2a78d6;
 
-  --font-ui: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-data: "Barlow Semi Condensed", "Barlow", system-ui, sans-serif;
+  /* aliases used across components */
+  --field: var(--canvas);
+  --sheet: var(--panel);
+  --graphite: var(--muted);
+  --hairline: var(--line);
+  --hairline-strong: var(--line-strong);
 
-  --text-xs: 0.78125rem; /* 12.5px */
-  --text-sm: 0.84375rem; /* 13.5px */
-  --text-md: 0.9375rem; /* 15px */
-  --text-lg: 1.125rem; /* 18px */
-  --text-xl: 1.375rem; /* 22px */
-  --text-2xl: 1.75rem; /* 28px */
-  --text-reading: 3rem; /* 48px: one per page */
+  /* type: one family, width carries density */
+  --font-ui: "Archivo Variable", "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: var(--font-ui);
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  --stretch-data: 84%;
+  --stretch-heading: 108%;
+
+  --text-xs: 0.71875rem; /* 11.5px */
+  --text-sm: 0.78125rem; /* 12.5px */
+  --text-md: 0.875rem; /* 14px */
+  --text-lg: 1rem; /* 16px */
+  --text-xl: 1.25rem; /* 20px */
+  --text-2xl: 1.625rem; /* 26px */
+  --text-reading: 2.25rem; /* 36px */
 
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
-  --space-5: 24px;
-  --space-6: 32px;
-  --space-7: 48px;
-  --space-8: 64px;
+  --space-5: 20px;
+  --space-6: 28px;
+  --space-7: 40px;
+  --space-8: 56px;
 
-  --radius-control: 6px;
-  --content-max: 1180px;
-  --sidebar: 236px;
+  --radius-control: 4px;
+  --radius-tile: 3px;
+  --content-max: 1600px;
+  --bar-height: 48px;
+  --filters-height: 46px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:where(:not([data-theme="light"])) {
     color-scheme: dark;
-    --field: #11171c;
-    --sheet: #182027;
-    --ink: #e3e9ee;
-    --graphite: #9aa7b2;
-    --hairline: #26313a;
-    --hairline-strong: #36434e;
-    --wash: rgb(227 233 238 / 0.05);
+    --canvas: #0f1619;
+    --panel: #151e22;
+    --raised: #1c272c;
+    --line: #26343a;
+    --line-strong: #36474e;
+    --wash: rgb(227 235 238 / 0.05);
+    --overlay: rgb(5 9 11 / 0.6);
+    --ink: #e3ebee;
+    --muted: #a0b0b7;
+    --faint: #7a8c94;
     --estimate: #3987e5;
-    --estimate-band: rgb(57 135 229 / 0.22);
-    --estimate-band-strong: rgb(57 135 229 / 0.36);
-    --good-text: #0ca30c;
-    --critical-text: #e66767;
+    --estimate-band: rgb(57 135 229 / 0.24);
+    --estimate-band-strong: rgb(57 135 229 / 0.4);
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+    --series-6: #008300;
+    --series-7: #9085e9;
+    --series-8: #e66767;
+    --div-neg-3: #e66767;
+    --div-neg-2: #a8423f;
+    --div-neg-1: #5c2e2d;
+    --div-mid: #26343a;
+    --div-pos-1: #1d3d63;
+    --div-pos-2: #285f9e;
+    --div-pos-3: #5598e7;
+    --seq-0: #1a2529;
+    --seq-1: #102f50;
+    --seq-2: #184f95;
+    --seq-3: #256abf;
+    --seq-4: #3987e5;
+    --seq-5: #6da7ec;
+    --seq-6: #b7d3f6;
+    --good-text: #3cc23c;
+    --warning-text: #fab219;
+    --critical-text: #ef7d7d;
     --focus: #6aa6ee;
   }
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --field: #11171c;
-  --sheet: #182027;
-  --ink: #e3e9ee;
-  --graphite: #9aa7b2;
-  --hairline: #26313a;
-  --hairline-strong: #36434e;
-  --wash: rgb(227 233 238 / 0.05);
+  --canvas: #0f1619;
+  --panel: #151e22;
+  --raised: #1c272c;
+  --line: #26343a;
+  --line-strong: #36474e;
+  --wash: rgb(227 235 238 / 0.05);
+  --overlay: rgb(5 9 11 / 0.6);
+  --ink: #e3ebee;
+  --muted: #a0b0b7;
+  --faint: #7a8c94;
   --estimate: #3987e5;
-  --estimate-band: rgb(57 135 229 / 0.22);
-  --estimate-band-strong: rgb(57 135 229 / 0.36);
-  --good-text: #0ca30c;
-  --critical-text: #e66767;
+  --estimate-band: rgb(57 135 229 / 0.24);
+  --estimate-band-strong: rgb(57 135 229 / 0.4);
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9085e9;
+  --series-8: #e66767;
+  --div-neg-3: #e66767;
+  --div-neg-2: #a8423f;
+  --div-neg-1: #5c2e2d;
+  --div-mid: #26343a;
+  --div-pos-1: #1d3d63;
+  --div-pos-2: #285f9e;
+  --div-pos-3: #5598e7;
+  --seq-0: #1a2529;
+  --seq-1: #102f50;
+  --seq-2: #184f95;
+  --seq-3: #256abf;
+  --seq-4: #3987e5;
+  --seq-5: #6da7ec;
+  --seq-6: #b7d3f6;
+  --good-text: #3cc23c;
+  --warning-text: #fab219;
+  --critical-text: #ef7d7d;
   --focus: #6aa6ee;
 }

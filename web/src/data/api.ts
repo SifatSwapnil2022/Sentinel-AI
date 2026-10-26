@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import type { z } from "zod";
-import { fleetSchema, incidentSchema, modelSchema } from "./schema";
+import { dailySchema, fleetSchema, incidentSchema, modelSchema } from "./schema";
 
 /**
  * Where documents come from. Both sources serve identical shapes (the server's parity test
@@ -10,8 +10,11 @@ import { fleetSchema, incidentSchema, modelSchema } from "./schema";
 export interface DataSource {
   live: boolean;
   fleet: string;
+  daily: string;
   model: (id: string) => string;
   incident: (id: string) => string;
+  /** One table of the BI star schema as CSV. */
+  export: (table: string) => string;
 }
 
 export function dataSource(api: string | undefined, base: string): DataSource {
@@ -20,16 +23,20 @@ export function dataSource(api: string | undefined, base: string): DataSource {
     return {
       live: true,
       fleet: `${root}/v1/fleet`,
+      daily: `${root}/v1/fleet/daily`,
       model: (id) => `${root}/v1/models/${encodeURIComponent(id)}`,
       incident: (id) => `${root}/v1/incidents/${encodeURIComponent(id)}`,
+      export: (table) => `${root}/v1/export/${encodeURIComponent(table)}.csv`,
     };
   }
   const root = `${base}data`;
   return {
     live: false,
     fleet: `${root}/fleet.json`,
+    daily: `${root}/fleet-daily.json`,
     model: (id) => `${root}/models/${encodeURIComponent(id)}.json`,
     incident: (id) => `${root}/alerts/${encodeURIComponent(id)}.json`,
+    export: (table) => `${root}/bi/${encodeURIComponent(table)}.csv`,
   };
 }
 
@@ -89,6 +96,13 @@ export const fleetQuery = () => ({
   retry,
 });
 
+export const dailyQuery = () => ({
+  queryKey: ["daily"] as const,
+  queryFn: () => fetchValidated(source.daily, dailySchema),
+  ...freshness,
+  retry,
+});
+
 export const modelQuery = (id: string) => ({
   queryKey: ["model", id] as const,
   queryFn: () => fetchValidated(source.model(id), modelSchema),
@@ -104,5 +118,6 @@ export const incidentQuery = (id: string) => ({
 });
 
 export const useFleet = () => useQuery(fleetQuery());
+export const useDaily = () => useQuery(dailyQuery());
 export const useModel = (id: string) => useQuery(modelQuery(id));
 export const useIncident = (id: string) => useQuery(incidentQuery(id));

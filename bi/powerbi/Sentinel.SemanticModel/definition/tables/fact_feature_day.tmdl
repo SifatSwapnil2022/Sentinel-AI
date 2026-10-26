@@ -1,0 +1,91 @@
+/// Model by feature by day: drift test result, PSI and missing-value rate.
+table fact_feature_day
+	lineageTag: c033f365-d44f-59bd-9d65-0d8ace316c5c
+
+	measure 'Feature drift days' = CALCULATE ( COUNTROWS ( fact_feature_day ), fact_feature_day[drifted] = TRUE () )
+		formatString: 0
+		lineageTag: 130863ec-f782-5703-9089-f90950e38287
+
+	measure 'Highest missing rate' = MAX ( fact_feature_day[null_rate] )
+		formatString: 0.0%
+		lineageTag: 1730fe49-4933-507f-9d4f-0a9d0182d1bb
+
+	column model_id
+		dataType: string
+		lineageTag: 62a7d8ff-e124-56d9-8f48-b063337af7ad
+		summarizeBy: none
+		sourceColumn: model_id
+
+	column feature
+		dataType: string
+		lineageTag: f03fdef0-dd01-5258-b574-3e09eee5b138
+		summarizeBy: none
+		sourceColumn: feature
+
+	column date
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		lineageTag: d3a4c809-fe59-5286-82d2-99dc5ed2cfdc
+		summarizeBy: none
+		sourceColumn: date
+		annotation UnderlyingDateTimeDataType = Date
+
+	column kind
+		dataType: string
+		lineageTag: ecc81616-72af-5fe2-85a1-2bc84d987fc5
+		summarizeBy: none
+		sourceColumn: kind
+
+	column method
+		dataType: string
+		lineageTag: b286ba65-d2a0-5c7a-b63e-45f258922408
+		summarizeBy: none
+		sourceColumn: method
+
+	column statistic
+		dataType: double
+		lineageTag: 19839673-9f89-5c68-aba5-962b9381b6e1
+		summarizeBy: none
+		sourceColumn: statistic
+
+	column threshold
+		dataType: double
+		lineageTag: fd48ce75-8b75-51fc-8eeb-0e7c4854c233
+		summarizeBy: none
+		sourceColumn: threshold
+
+	column drifted
+		dataType: boolean
+		lineageTag: 7a65a849-3856-5984-a61a-d180769df0ba
+		summarizeBy: none
+		sourceColumn: drifted
+
+	column psi
+		dataType: double
+		lineageTag: 58e6f5dc-3adb-58ce-b779-e9e50dba9777
+		summarizeBy: none
+		sourceColumn: psi
+
+	column null_rate
+		dataType: double
+		formatString: 0.0%
+		lineageTag: db04bd98-a92f-534d-86d8-2ec65083d33a
+		summarizeBy: none
+		sourceColumn: null_rate
+
+	column reference_null_rate
+		dataType: double
+		formatString: 0.0%
+		lineageTag: 43c8a0e6-4195-5c08-91d3-6a0b0be3857d
+		summarizeBy: none
+		sourceColumn: reference_null_rate
+
+	partition fact_feature_day = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(Web.Contents(DataUrl, [RelativePath = "fact_feature_day.csv", Headers = if ApiKey = "" then [] else [Authorization = "Bearer " & ApiKey]]), [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Typed = Table.TransformColumnTypes(Promoted, {{"model_id", type text}, {"feature", type text}, {"date", type date}, {"kind", type text}, {"method", type text}, {"statistic", type number}, {"threshold", type number}, {"drifted", type logical}, {"psi", type number}, {"null_rate", type number}, {"reference_null_rate", type number}}, "en-US")
+				in
+				    Typed

@@ -1,0 +1,37 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.2.0/schema.json",
+  "name": "a330eacb03a25130aa34",
+  "position": {
+    "x": 965,
+    "y": 88,
+    "z": 0,
+    "width": 300,
+    "height": 110
+  },
+  "visual": {
+    "visualType": "card",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_incident"
+                    }
+                  },
+                  "Property": "Open incidents"
+                }
+              },
+              "queryRef": "fact_incident.Open incidents",
+              "nativeQueryRef": "Open incidents"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

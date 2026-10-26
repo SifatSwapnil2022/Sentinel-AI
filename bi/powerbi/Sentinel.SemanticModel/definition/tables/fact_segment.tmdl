@@ -1,0 +1,95 @@
+/// Model by feature by segment over the last 7 days: traffic share and accuracy.
+table fact_segment
+	lineageTag: a8c17561-0d05-59f5-9940-83c5958cbb4f
+
+	column model_id
+		dataType: string
+		lineageTag: a2c47fb8-7a60-5dee-8374-a62b0f22b924
+		summarizeBy: none
+		sourceColumn: model_id
+
+	column window_end
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		lineageTag: 381717ac-74d2-5e75-a071-111ec423ec47
+		summarizeBy: none
+		sourceColumn: window_end
+		annotation UnderlyingDateTimeDataType = Date
+
+	column feature
+		dataType: string
+		lineageTag: d323e9fa-4f2a-591b-af0e-6f9b565403a7
+		summarizeBy: none
+		sourceColumn: feature
+
+	column segment
+		dataType: string
+		lineageTag: d40b40a4-af1d-57c6-a83e-8e504d6cf1af
+		summarizeBy: none
+		sourceColumn: segment
+
+	column rows_reference
+		dataType: int64
+		formatString: 0
+		lineageTag: c84ad507-c64c-5c10-83de-82c1283cab1b
+		summarizeBy: none
+		sourceColumn: rows_reference
+
+	column rows_current
+		dataType: int64
+		formatString: 0
+		lineageTag: d4db0c76-b804-5ccb-aa16-92c4f8d304a0
+		summarizeBy: none
+		sourceColumn: rows_current
+
+	column share_reference
+		dataType: double
+		formatString: 0.0%
+		lineageTag: 862d298a-89cf-5279-b4f1-616c0cd6b752
+		summarizeBy: none
+		sourceColumn: share_reference
+
+	column share_current
+		dataType: double
+		formatString: 0.0%
+		lineageTag: 8b4101ea-54fd-5b5b-92ab-96933d0b508f
+		summarizeBy: none
+		sourceColumn: share_current
+
+	column reference_accuracy
+		dataType: double
+		formatString: 0.0%
+		lineageTag: 4b620b89-a7e4-5e4e-a090-08136654f264
+		summarizeBy: none
+		sourceColumn: reference_accuracy
+
+	column estimated_accuracy
+		dataType: double
+		formatString: 0.0%
+		lineageTag: 85756d83-ff62-5ed4-9569-04cf5188b269
+		summarizeBy: none
+		sourceColumn: estimated_accuracy
+
+	column measured_accuracy
+		dataType: double
+		formatString: 0.0%
+		lineageTag: 14102ebb-bcfa-5519-a777-0b7882b9f0f9
+		summarizeBy: none
+		sourceColumn: measured_accuracy
+
+	column labelled_rows
+		dataType: int64
+		formatString: 0
+		lineageTag: 69733f7b-dfd8-5e82-bfe3-7009587ced8c
+		summarizeBy: none
+		sourceColumn: labelled_rows
+
+	partition fact_segment = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(Web.Contents(DataUrl, [RelativePath = "fact_segment.csv", Headers = if ApiKey = "" then [] else [Authorization = "Bearer " & ApiKey]]), [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+				    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+				    Typed = Table.TransformColumnTypes(Promoted, {{"model_id", type text}, {"window_end", type date}, {"feature", type text}, {"segment", type text}, {"rows_reference", Int64.Type}, {"rows_current", Int64.Type}, {"share_reference", type number}, {"share_current", type number}, {"reference_accuracy", type number}, {"estimated_accuracy", type number}, {"measured_accuracy", type number}, {"labelled_rows", Int64.Type}}, "en-US")
+				in
+				    Typed

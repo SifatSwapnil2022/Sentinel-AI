@@ -9,7 +9,7 @@ import { incidentQuery, useFleet, useModel } from "../data/api";
 import type { Fleet } from "../data/schema";
 import { conditionText } from "../lib/describe";
 import { decimal, longDate, percent, percentRange, shortDate } from "../lib/format";
-import { brokenLink, hiddenSegment, labelGap, quietModels } from "../lib/story";
+import { brokenLink, hiddenSegment, labelGap, missingCase, quietModels } from "../lib/story";
 import { ArchitectureFlow } from "./landing/ArchitectureFlow";
 import styles from "./LandingPage.module.css";
 
@@ -32,16 +32,18 @@ function useOptionalIncident(id: string | undefined) {
 
 export function LandingPage() {
   useEffect(() => {
-    document.title = "Sentinel: know a model is failing before its labels arrive";
+    document.title = "Sentinel: model monitoring when labels come late";
   }, []);
 
   const fleet = useFleet();
   const dropAlert = alertOf(fleet.data, "estimate_drop");
   const conceptAlert = alertOf(fleet.data, "concept_drift");
   const linkAlert = alertOf(fleet.data, "multivariate");
+  const missingAlert = alertOf(fleet.data, "data_quality");
   const caseModel = useModel(dropAlert?.modelId ?? "fraud-screen");
   const concept = useOptionalIncident(conceptAlert?.id);
   const relation = useOptionalIncident(linkAlert?.id);
+  const missingIncident = useOptionalIncident(missingAlert?.id);
 
   const gap =
     fleet.data && caseModel.data
@@ -50,6 +52,8 @@ export function LandingPage() {
   const segment = concept.data ? hiddenSegment(concept.data) : null;
   const link = relation.data ? brokenLink(relation.data) : null;
   const quiet = fleet.data ? quietModels(fleet.data) : [];
+  const missing = missingIncident.data ? missingCase(missingIncident.data) : null;
+  const modelCount = fleet.data?.models.length ?? 8;
 
   return (
     <div className={styles.page}>
@@ -61,9 +65,9 @@ export function LandingPage() {
           <Wordmark to="/" label="Sentinel home" />
           <nav aria-label="Sections" className={styles.sections}>
             <a href="#problem">Problem</a>
-            <a href="#approach">Approach</a>
-            <a href="#how">How it works</a>
-            <a href="#evidence">Evidence</a>
+            <a href="#approach">Checks</a>
+            <a href="#how">Architecture</a>
+            <a href="#evidence">Testing</a>
             <a href={REPO}>GitHub</a>
           </nav>
           <Link to="/overview" className={styles.primary}>
@@ -77,20 +81,24 @@ export function LandingPage() {
         <section className={styles.hero} aria-labelledby="hero-title">
           <div className={styles.heroText}>
             <h1 id="hero-title" className={styles.heroTitle}>
-              Know a model is failing before its labels arrive.
+              Model monitoring for when the labels arrive late.
             </h1>
             <p className={styles.lede}>
-              Most production models learn whether they were right weeks later: a chargeback, a
-              loan default, a cancelled plan. Until then, the accuracy on the dashboard describes
-              last month's model. Sentinel estimates accuracy the day predictions are made, checks
-              the estimate when labels land, and names the traffic behind a drop.
+              A fraud model learns it was wrong when the chargeback comes in, a credit model when the
+              loan defaults. That can take months, and until then the accuracy on a dashboard is old
+              news. Sentinel estimates each day's accuracy from the model's own scores, checks the
+              estimate once labels arrive, and shows which part of the traffic a drop came from.
+            </p>
+            <p className={styles.lede}>
+              The demo runs {modelCount} models on 90 days of synthetic traffic, through the same
+              analysis code as the service.
             </p>
             <div className={styles.actions}>
               <Link to="/overview" className={styles.primary}>
                 Open the live dashboard
               </Link>
               <a href={REPO} className={styles.secondary}>
-                Read the code
+                Source on GitHub
               </a>
             </div>
           </div>
@@ -124,8 +132,8 @@ export function LandingPage() {
               </div>
               <figcaption id="readings-caption" className={styles.readingCaption}>
                 <Link to={`/models/${gap.modelId}`}>{gap.modelId}</Link>, a fraud model in the
-                demo. Its accuracy fell on {shortDate(gap.flaggedOn)}, and Sentinel opened an
-                incident that day. Chargebacks for that day will be complete around{" "}
+                demo. The estimate dropped on {shortDate(gap.flaggedOn)} and an incident opened the
+                same day. Chargebacks for that day should be complete around{" "}
                 {longDate(gap.labelsCompleteOn)}.
               </figcaption>
             </figure>
@@ -139,8 +147,8 @@ export function LandingPage() {
                 {caseModel.data.id}, last {caseModel.data.days.length} days
               </h2>
               <p className={styles.muted}>
-                The band is what Sentinel estimated each day. Rings appear only as labels come in,
-                and the strip below shows how few have.
+                The band is the estimate for each day. Rings are accuracy measured from labels; the
+                strip underneath shows how many labels each day has so far.
               </p>
             </div>
             <Legend items={["band", "ring", "reference"]} />
@@ -158,9 +166,8 @@ export function LandingPage() {
           <div className={styles.sectionHead}>
             <h2 id="problem-title">Why models fail quietly</h2>
             <p className={styles.sectionLede}>
-              A model doesn't crash when the world changes. It keeps answering, a little more
-              wrong each week, and the usual tools are built to notice too late or to notice the
-              wrong thing.
+              When the data changes, a model keeps returning answers. Nothing errors. The common
+              checks either wait for labels or watch the inputs, and each misses cases.
             </p>
           </div>
           <ol className={styles.problems}>
@@ -175,10 +182,9 @@ export function LandingPage() {
             <li>
               <h3>Input drift is the wrong alarm</h3>
               <p>
-                Drift tests fire on seasonal shifts the model handles fine. They can't see the
-                failure that matters most: the same inputs now leading to different outcomes.
-                Even label-free estimators{" "}
-                <a href={SOURCES.cbpe}>assume that doesn't happen</a>.
+                Drift tests fire on shifts the model copes with, such as seasonal volume. They don't
+                fire when the same inputs start leading to different outcomes, and label-free
+                estimators <a href={SOURCES.cbpe}>assume that never happens</a>.
               </p>
             </li>
             <li>
@@ -189,10 +195,10 @@ export function LandingPage() {
                     In the demo, measured accuracy fell {points(segment.overallDrop)} overall and{" "}
                     {points(segment.segmentDrop)} where{" "}
                     {segment.conditions.map((c) => conditionText(c.feature, c.value)).join(" and ")}
-                    . The overall number looks like noise.
+                    . Overall, that looks like noise.
                   </>
                 ) : (
-                  "A small drop overall can be a collapse for one region or customer group, and the overall number looks like noise."
+                  "A small drop overall can be a large one for a single region or customer group, and the overall number looks like noise."
                 )}
               </p>
             </li>
@@ -207,10 +213,10 @@ export function LandingPage() {
         {/* -------------------------------------------------------------- approach */}
         <section id="approach" className={styles.section} aria-labelledby="approach-title">
           <div className={styles.sectionHead}>
-            <h2 id="approach-title">What Sentinel does about it</h2>
+            <h2 id="approach-title">What it checks</h2>
             <p className={styles.sectionLede}>
-              Four checks, each covering a gap the others leave. Every example below is a live
-              page in the demo, computed by the same engine the service runs.
+              Five checks run on every model each day. An incident opens when one fails two days in
+              a row and closes after seven quiet days. The examples link to pages in the demo.
             </p>
           </div>
           <ol className={styles.steps}>
@@ -220,14 +226,15 @@ export function LandingPage() {
                 <p className={styles.method}>Calibrated confidence-based performance estimation</p>
               </div>
               <p>
-                Calibrated scores give an expected confusion matrix, so accuracy, precision,
-                recall and F1 come with a likely range from the first day.
+                After calibration, a score of 0.8 means right about 80% of the time. Summing over a
+                day's predictions gives an expected confusion matrix, so accuracy, precision, recall
+                and F1 each get an estimate and a likely range without any labels.
               </p>
               <p className={styles.proof}>
                 {gap ? (
                   <>
-                    {gap.modelId}: estimate fell to {percent(gap.estimate)} from{" "}
-                    {shortDate(gap.flaggedOn)}, with almost no labels for those days.{" "}
+                    {gap.modelId}: the estimate fell to {percent(gap.estimate)} on{" "}
+                    {shortDate(gap.flaggedOn)}, when those days had almost no labels.{" "}
                     <Link to={`/models/${gap.modelId}`}>See the model</Link>
                   </>
                 ) : (
@@ -241,9 +248,9 @@ export function LandingPage() {
                 <p className={styles.method}>Rolling-week comparison, reference error included</p>
               </div>
               <p>
-                Measured accuracy is compared with the estimate on the same rows. A gap outside the
-                range means inputs now lead to different outcomes: the case estimation alone can't
-                see.
+                Once labels arrive, measured accuracy over the past week is compared with the
+                estimate for the same rows. Measured below the range means the inputs now lead to
+                different outcomes, which the estimate cannot see by itself.
               </p>
               <p className={styles.proof}>
                 {segment ? (
@@ -263,14 +270,15 @@ export function LandingPage() {
                 <p className={styles.method}>PCA reconstruction error with a held-out band</p>
               </div>
               <p>
-                A model fitted on reference data reconstructs each day. When relationships between
-                features change, error rises, even if every feature looks normal on its own.
+                PCA fitted on reference data compresses and rebuilds each day's rows. When features
+                stop moving together the way they used to, the rebuild error rises, even if each
+                feature looks normal on its own.
               </p>
               <p className={styles.proof}>
                 {link ? (
                   <>
                     Correlation of {link.a} and {link.b}: {decimal(link.before)} to{" "}
-                    {decimal(link.after)}, with no single-feature alarm.{" "}
+                    {decimal(link.after)}; no single feature drifted.{" "}
                     <Link to={`/incidents/${link.incidentId}`}>See the incident</Link>
                   </>
                 ) : (
@@ -280,18 +288,40 @@ export function LandingPage() {
             </li>
             <li className={styles.step}>
               <div>
-                <h3>Name the segment, and stay quiet otherwise</h3>
+                <h3>Catch missing values</h3>
+                <p className={styles.method}>Null rate against the reference, per feature</p>
+              </div>
+              <p>
+                A feature that starts arriving empty is a pipeline problem, not drift. It gets its
+                own check because the accuracy estimate can move either way when it happens.
+              </p>
+              <p className={styles.proof}>
+                {missing ? (
+                  <>
+                    {missing.modelId}: {missing.feature} empty for {percent(missing.nullRate, 0)} of rows,
+                    and the estimate went {missing.estimateChange >= 0 ? "up" : "down"}{" "}
+                    {Math.abs(missing.estimateChange * 100).toFixed(1)} points.{" "}
+                    <Link to={`/incidents/${missing.incidentId}`}>See the incident</Link>
+                  </>
+                ) : (
+                  <Link to="/incidents">See incidents</Link>
+                )}
+              </p>
+            </li>
+            <li className={styles.step}>
+              <div>
+                <h3>Find the segment behind a drop</h3>
                 <p className={styles.method}>Shift-share decomposition, ranked by confident drop</p>
               </div>
               <p>
-                A drop is split into "worse in this segment" and "more traffic from a harder
-                segment". Only drops that are statistically clear are listed, and rules must hold
-                two days before anyone is paged.
+                A drop is split into two parts: accuracy fell within a segment, or more traffic came
+                from a segment that was always harder. Only segments whose drop is clear of sampling
+                noise are listed.
               </p>
               <p className={styles.proof}>
                 {quiet.length > 0 ? (
                   <>
-                    {quiet.join(", ")}: no alert in {fleet.data?.windowDays ?? 30} days of traffic.{" "}
+                    {quiet.join(", ")}: no incident in {fleet.data?.windowDays ?? 90} days.{" "}
                     <Link to={`/models/${quiet[0]}`}>See the model</Link>
                   </>
                 ) : (
@@ -307,7 +337,8 @@ export function LandingPage() {
           <div className={styles.sectionHead}>
             <h2 id="how-title">From a model server to an incident</h2>
             <p className={styles.sectionLede}>
-              Built so that monitoring can never slow down or break the service it watches.
+              Logging a prediction puts it in a memory buffer and returns. If Sentinel is slow or
+              down, the model server carries on and the buffer drops the oldest rows.
             </p>
           </div>
           <ArchitectureFlow />
@@ -327,56 +358,57 @@ sentinel.log_label(request_id, 0)`}</code>
         {/* -------------------------------------------------------------- evidence */}
         <section id="evidence" className={styles.section} aria-labelledby="evidence-title">
           <div className={styles.sectionHead}>
-            <h2 id="evidence-title">How it's checked</h2>
+            <h2 id="evidence-title">How it's tested</h2>
             <p className={styles.sectionLede}>
-              Monitoring that cries wolf gets muted, and monitoring that's wrong is worse than
-              none. These are measured, not claimed.
+              A monitor that alerts too often gets muted, so false alarms are tested as hard as
+              detection.
             </p>
           </div>
           <dl className={styles.evidence}>
             <div>
-              <dt>1e-9</dt>
+              <dt>Against reference implementations</dt>
               <dd>
-                Largest difference from NannyML's estimates and sampling errors, for all four
-                metrics. Drift statistics match Evidently.
+                Accuracy, precision, recall and F1 estimates match NannyML to within 1e-9, and the
+                drift statistics match Evidently.
               </dd>
             </div>
             <div>
-              <dt>0.55%</dt>
+              <dt>False alarms</dt>
               <dd>
-                Clean days on which the relationship detector alarms, averaged over ten
-                references. It was 6.5% before the band was fixed.
+                Three random seeds, {modelCount} models, 90 days each: no incident before an injected
+                change or on a model without one. On clean data the relationship check fires on
+                0.55% of days.
               </dd>
             </div>
             <div>
-              <dt>0 of 20</dt>
+              <dt>Detection</dt>
               <dd>
-                Seeded runs with an incident before the injected change, or on the healthy model.
-                The subtle credit drift is caught in 4 of 5 seeds; the others in 5 of 5.
+                In the same runs every injected problem opened an incident one to four days after it
+                started, and the temporary shift closed by itself once traffic returned to normal.
               </dd>
             </div>
             <div>
-              <dt>0 differences</dt>
+              <dt>Live pipeline</dt>
               <dd>
-                Between this demo and 182,624 predictions streamed through the running service:
-                SDK, API, Redis, workers, Postgres.
+                A test in CI sends four of the demo models' traffic through the API, Redis, the
+                worker and Postgres, and checks the results equal the static demo exactly.
               </dd>
             </div>
             <div>
-              <dt>~20k/s</dt>
-              <dd>Predictions accepted by one API process; a single worker keeps up.</dd>
+              <dt>Throughput</dt>
+              <dd>One API process accepted about 20,000 predictions a second in a local load test.</dd>
             </div>
             <div>
-              <dt>95%</dt>
+              <dt>Accessibility</dt>
               <dd>
-                Python test coverage, with server tests on real Postgres and Redis, and zero serious
-                accessibility violations across the dashboard.
+                Every chart has a table view. Browser tests run axe on each page in both themes and
+                fail on serious violations.
               </dd>
             </div>
           </dl>
           <p className={styles.muted}>
-            Every design decision and its trade-off is written up as an{" "}
-            <a href={`${REPO}/tree/main/docs/adr`}>architecture decision record</a>.
+            The reasoning behind each design choice is in the{" "}
+            <a href={`${REPO}/tree/main/docs/adr`}>architecture decision records</a>.
           </p>
         </section>
 
@@ -385,8 +417,9 @@ sentinel.log_label(request_id, 0)`}</code>
           <div className={styles.sectionHead}>
             <h2 id="start-title">Run it</h2>
             <p className={styles.sectionLede}>
-              The whole stack runs on one machine with Docker. The demo streams four models' traffic
-              in through the SDK, so you watch incidents open on real infrastructure.
+              The stack runs on one machine with Docker. <code>make demo</code> streams the demo
+              traffic in through the SDK, so incidents open on the real services rather than from
+              static files.
             </p>
           </div>
           <pre className={styles.code} tabIndex={0} aria-label="Commands to run Sentinel">
@@ -412,18 +445,16 @@ make demo    # stream the demo scenarios through the SDK`}</code>
               <li>Performance estimation covers binary classifiers; multiclass and regression are next.</li>
               <li>The label check needs labels to fire, so it confirms a problem rather than predicting it.</li>
               <li>Segments are searched one and two features deep, not further.</li>
+              <li>There is no login or per-team access control; it is meant to run inside a private network.</li>
             </ul>
           </div>
         </section>
       </main>
 
       <footer className={styles.footer}>
-        <p>
-          Sentinel is open source under the MIT licence. Built by Md Sifatullah Sheikh.
-        </p>
+        <p>Sentinel is open source under the MIT licence. Built by Md Sifatullah Sheikh.</p>
         <p className={styles.muted}>
-          The demo runs on synthetic traffic from four scenario models; every number on it comes
-          from the real engine.
+          Demo traffic is synthetic. The analysis is the same code the service runs.
         </p>
         <ul className={styles.links}>
           <li>
