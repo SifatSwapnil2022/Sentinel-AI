@@ -33,6 +33,8 @@ const PAGES = [
   ["incidents", "/incidents?state=all&period=90"],
   ["explore", "/explore?measure=predictions&by=team&view=bar"],
   ["reports", "/reports"],
+  ["llm", "/llm"],
+  ["llm incident", "/llm?period=90&incident=support-assistant-llm-1"],
 ] as const;
 
 test.describe("accessibility", () => {

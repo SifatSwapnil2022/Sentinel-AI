@@ -253,3 +253,25 @@ describe("not found", () => {
     expect(screen.getAllByRole("link", { name: /overview/i })[0]).toBeInTheDocument();
   });
 });
+
+describe("LLM apps", () => {
+  it("opens on the critical incident and highlights the leaked number", async () => {
+    mockData();
+    renderRoute("/llm");
+    expect(await screen.findByRole("heading", { level: 1, name: "support-assistant" })).toBeInTheDocument();
+    const tile = await region("Answers exposed customer phone numbers");
+    const [first] = within(tile).getAllByRole("article");
+    const mark = first?.querySelector("mark");
+    expect(mark?.textContent).toMatch(/^01[3-9]\d{8}$/);
+  });
+
+  it("switches incident from the table", async () => {
+    mockData();
+    const { router } = renderRoute("/llm?period=90");
+    const table = within(await region("Incidents")).getByRole("table");
+    await userEvent.click(within(table).getByRole("link", { name: "Answers stated things the articles don't say" }));
+    expect(router.state.location.search).toContain("incident=support-assistant-llm-1");
+    const tile = await region("Answers stated things the articles don't say");
+    expect(within(tile).getAllByRole("article")[0]?.querySelector("mark")).not.toBeNull();
+  });
+});

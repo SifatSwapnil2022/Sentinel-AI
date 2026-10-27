@@ -292,3 +292,94 @@ export type Severity = z.infer<typeof severitySchema>;
 export type SignalKind = z.infer<typeof signalKindSchema>;
 export type DriftMethod = z.infer<typeof driftMethodSchema>;
 export type MetricName = z.infer<typeof metricNameSchema>;
+
+// ------------------------------------------------------------------------ LLM app monitoring
+
+export const llmRuleSchema = z.enum([
+  "pii_leak",
+  "unsupported_answers",
+  "errors",
+  "latency",
+  "negative_feedback",
+  "topic_shift",
+]);
+
+const llmExampleSchema = z.object({
+  promptVersion: z.string(),
+  topic: z.string(),
+  question: z.string(),
+  context: z.string(),
+  answer: z.string(),
+  unsupported: z.array(z.string()),
+  pii: z.array(z.string()),
+  feedback: z.union([z.literal(1), z.literal(-1)]).nullable(),
+});
+
+export const llmSchema = z.object({
+  schemaVersion: z.literal(1),
+  today: isoDate,
+  app: z.object({
+    id: z.string(),
+    name: z.string(),
+    description: z.string(),
+    model: z.object({ name: z.string(), priceIn: z.number(), priceOut: z.number() }),
+    referenceWindow: z.object({ from: isoDate, to: isoDate }),
+  }),
+  reference: z.object({
+    unsupportedRate: unit,
+    errorRate: unit,
+    negativeRate: unit,
+    p95LatencyMs: z.number(),
+    topics: z.record(z.string(), z.number().int()),
+  }),
+  days: z.array(
+    z.object({
+      date: isoDate,
+      requests: z.number().int().nonnegative(),
+      errorRate: unit,
+      unsupportedRate: unit,
+      piiAnswers: z.number().int().nonnegative(),
+      refusalRate: unit,
+      negativeRate: unit,
+      feedback: z.number().int().nonnegative(),
+      p50LatencyMs: z.number(),
+      p95LatencyMs: z.number(),
+      inputTokens: z.number().int(),
+      outputTokens: z.number().int(),
+      costUsd: z.number(),
+      topicShift: unit,
+      topics: z.record(z.string(), z.number().int()),
+      versions: z.record(z.string(), z.object({ requests: z.number().int(), unsupportedRate: unit })),
+      signals: z.array(llmRuleSchema),
+    }),
+  ),
+  versions: z.array(
+    z.object({
+      version: z.string(),
+      from: isoDate,
+      to: isoDate,
+      requests: z.number().int(),
+      unsupportedRate: unit,
+      negativeRate: unit,
+      p95LatencyMs: z.number(),
+      costPer1k: z.number(),
+    }),
+  ),
+  incidents: z.array(
+    z.object({
+      id: z.string(),
+      rule: llmRuleSchema,
+      rules: z.array(llmRuleSchema),
+      title: z.string(),
+      severity: severitySchema,
+      status: incidentStatusSchema,
+      openedOn: isoDate,
+      resolvedOn: isoDate.nullable(),
+      days: z.number().int(),
+      examples: z.array(llmExampleSchema),
+    }),
+  ),
+});
+
+export type Llm = z.infer<typeof llmSchema>;
+export type LlmRule = z.infer<typeof llmRuleSchema>;

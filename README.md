@@ -23,7 +23,8 @@ synthetic traffic for eight models.
 | 2 | Dashboard on demo traffic run through the engine | Done |
 | 3 | Ingestion and query API, storage, background workers, Python SDK | Done |
 | 4 | Incident history, data quality check, BI dashboard, star schema exports, Power BI and Tableau | Done |
-| 5 | OpenTelemetry ingestion and LLM evaluation | Planned |
+| 5 | LLM app monitoring: unsupported answers, personal data, latency, errors, feedback, topic mix, prompt versions | Engine and dashboard done, on demo data |
+| 6 | LLM traces through the API (OpenTelemetry) | Planned |
 
 ![Overview: KPIs, each model's estimated accuracy with its likely range, the incident timeline, a heatmap of accuracy against reference by day, and the models table](docs/images/overview.png)
 
@@ -36,6 +37,7 @@ synthetic traffic for eight models.
 | Model | Tabs for performance (estimate, measured accuracy, label check), inputs (drift heatmap, reconstruction error, missing values, distributions), segments, traffic and incidents |
 | Incidents | Open and resolved incidents, with a timeline |
 | Incident | What fired and when, accuracy around the incident, where the change comes from, the segments that cost the most, example rows |
+| LLM apps | A retrieval-augmented support assistant: unsupported answers, personal data in answers, latency, errors, thumbs-down, topic mix, prompt versions, and incidents with the flagged sentences highlighted |
 | Explore | Any daily measure, grouped by model, team or fleet, as lines, stacked bars or period totals |
 | Reports | The CSV tables, the Power BI project and the Tableau workbook |
 
@@ -139,6 +141,14 @@ and from it accuracy, precision, recall and F1, each with a confidence band. Whe
 band means the input–outcome relationship has changed, which input drift tests cannot see.
 Measured accuracy above the band is shown but not alerted on.
 
+**LLM apps.** Each call is checked without calling another model: answer sentences whose words
+and numbers aren't in the retrieved context are unsupported (a lexical check that catches
+invented fees and policies, not subtle paraphrases); emails, Bangladeshi mobile numbers and
+Luhn-valid card numbers in an answer are personal data; refusals are counted. Daily rates are
+tested against the app's normal weeks, and checks that fail together become one incident
+(`sentinel_core.llm`). The demo app's traffic is synthetic and read from a file; the API does
+not ingest LLM traces yet.
+
 **Missing values.** A feature whose share of empty values rises more than 5 points above its
 reference opens a data quality incident (critical above 25). It is separate from drift because
 the values that are present can look perfectly normal.
@@ -188,12 +198,12 @@ realized  0.842
   before an injected change or on a model without one; every injected problem opened an incident
   one to four days after it started; the temporary shift resolved by itself
   ([ADR 6](docs/adr/0006-false-alarms-and-detection-power.md), [ADR 8](docs/adr/0008-episodes-data-quality-bi.md)).
-- **Python**: 271 tests (155 core, 100 server against real Postgres and Redis, 16 SDK). Server
+- **Python**: 289 tests (173 core, 100 server against real Postgres and Redis, 16 SDK). Server
   tests cover auth and scopes, every validation path, idempotent retries, labels before
   predictions, dead-lettering, stream trimming, partition retention, incident history and the
   CSV exports. Coverage is 96%.
-- **Web**: 147 unit and component tests, including a contract test that every generated JSON
-  file passes the dashboard's schemas, and 126 Playwright tests on desktop and phone: the journey
+- **Web**: 151 unit and component tests, including a contract test that every generated JSON
+  file passes the dashboard's schemas, and 138 Playwright tests on desktop and phone: the journey
   from the landing page to an incident's cause, slicers surviving navigation, brushing, CSV
   downloads, keyboard access to charts, no sideways scrolling, and no serious axe violations on
   any page in either theme.

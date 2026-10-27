@@ -10,6 +10,7 @@ const SECTIONS = [
   { to: "/overview", label: "Overview" },
   { to: "/models", label: "Models" },
   { to: "/incidents", label: "Incidents" },
+  { to: "/llm", label: "LLM apps" },
   { to: "/explore", label: "Explore" },
   { to: "/reports", label: "Reports" },
 ] as const;

@@ -72,6 +72,7 @@ convention = "google"
 "sdk/python/tests/**" = ["D", "PLR2004", "N802"]
 "server/src/sentinel_server/migrations/**" = ["D400", "D415"]  # Alembic's revision header format
 "demo/**" = ["D1"]  # scripts: module docstrings explain them; helpers stay terse
+"demo/build_llm.py" = ["D1", "E501"]  # the synthetic help-centre articles are long strings
 "bi/**" = ["D1", "E501"]  # generators: DAX, M and XML read better on one line
 
 # ---------------------------------------------------------------- mypy

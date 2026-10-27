@@ -215,7 +215,7 @@ export function LandingPage() {
           <div className={styles.sectionHead}>
             <h2 id="approach-title">What it checks</h2>
             <p className={styles.sectionLede}>
-              Five checks run on every model each day. An incident opens when one fails two days in
+              Five checks run on every model each day, and LLM apps get their own. An incident opens when one fails two days in
               a row and closes after seven quiet days. The examples link to pages in the demo.
             </p>
           </div>
@@ -306,6 +306,21 @@ export function LandingPage() {
                 ) : (
                   <Link to="/incidents">See incidents</Link>
                 )}
+              </p>
+            </li>
+            <li className={styles.step}>
+              <div>
+                <h3>Watch LLM apps too</h3>
+                <p className={styles.method}>Answers checked against the retrieved context</p>
+              </div>
+              <p>
+                For a retrieval-augmented assistant, each answer is checked for sentences and numbers
+                the retrieved article doesn't contain, and for personal data. Latency, errors,
+                thumbs-down and topic mix are tracked per prompt version.
+              </p>
+              <p className={styles.proof}>
+                A prompt that invented fees, a provider slowdown and a phone-number leak.{" "}
+                <Link to="/llm">See the LLM page</Link>
               </p>
             </li>
             <li className={styles.step}>

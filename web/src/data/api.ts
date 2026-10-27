@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import type { z } from "zod";
-import { dailySchema, fleetSchema, incidentSchema, modelSchema } from "./schema";
+import { dailySchema, fleetSchema, incidentSchema, llmSchema, modelSchema } from "./schema";
 
 /**
  * Where documents come from. Both sources serve identical shapes (the server's parity test
@@ -11,6 +11,8 @@ export interface DataSource {
   live: boolean;
   fleet: string;
   daily: string;
+  /** LLM app monitoring. The API has no LLM endpoints yet, so this is always the demo file. */
+  llm: string;
   model: (id: string) => string;
   incident: (id: string) => string;
   /** One table of the BI star schema as CSV. */
@@ -24,6 +26,7 @@ export function dataSource(api: string | undefined, base: string): DataSource {
       live: true,
       fleet: `${root}/v1/fleet`,
       daily: `${root}/v1/fleet/daily`,
+      llm: `${base}data/llm.json`,
       model: (id) => `${root}/v1/models/${encodeURIComponent(id)}`,
       incident: (id) => `${root}/v1/incidents/${encodeURIComponent(id)}`,
       export: (table) => `${root}/v1/export/${encodeURIComponent(table)}.csv`,
@@ -34,6 +37,7 @@ export function dataSource(api: string | undefined, base: string): DataSource {
     live: false,
     fleet: `${root}/fleet.json`,
     daily: `${root}/fleet-daily.json`,
+    llm: `${root}/llm.json`,
     model: (id) => `${root}/models/${encodeURIComponent(id)}.json`,
     incident: (id) => `${root}/alerts/${encodeURIComponent(id)}.json`,
     export: (table) => `${root}/bi/${encodeURIComponent(table)}.csv`,
@@ -117,6 +121,14 @@ export const incidentQuery = (id: string) => ({
   retry,
 });
 
+export const llmQuery = () => ({
+  queryKey: ["llm"] as const,
+  queryFn: () => fetchValidated(source.llm, llmSchema),
+  ...freshness,
+  retry,
+});
+
+export const useLlm = () => useQuery(llmQuery());
 export const useFleet = () => useQuery(fleetQuery());
 export const useDaily = () => useQuery(dailyQuery());
 export const useModel = (id: string) => useQuery(modelQuery(id));

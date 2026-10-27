@@ -328,6 +328,7 @@ describe("page titles", () => {
     ["/incidents", "Incidents – Sentinel"],
     ["/explore", "Explore – Sentinel"],
     ["/reports", "Reports – Sentinel"],
+    ["/llm", "LLM apps – Sentinel"],
     ["/nowhere", "Page not found – Sentinel"],
   ])("%s", async (path, title) => {
     mockData();

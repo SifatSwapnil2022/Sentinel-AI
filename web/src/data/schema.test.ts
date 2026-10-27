@@ -1,7 +1,7 @@
 import { readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { fixture } from "../test/render";
-import { fleetSchema, incidentSchema, modelSchema } from "./schema";
+import { dailySchema, fleetSchema, incidentSchema, llmSchema, modelSchema } from "./schema";
 
 // Contract test: the Python generator and the dashboard must agree on every field.
 const dir = resolve(import.meta.dirname, "../../public/data");
@@ -10,6 +10,11 @@ const files = (sub: string): string[] => readdirSync(resolve(dir, sub));
 describe("committed demo data matches the schemas", () => {
   it("fleet.json", () => {
     expect(() => fleetSchema.parse(fixture("fleet.json"))).not.toThrow();
+  });
+
+  it("fleet-daily.json and llm.json", () => {
+    expect(() => dailySchema.parse(fixture("fleet-daily.json"))).not.toThrow();
+    expect(() => llmSchema.parse(fixture("llm.json"))).not.toThrow();
   });
 
   it.each(files("models"))("models/%s", (file) => {

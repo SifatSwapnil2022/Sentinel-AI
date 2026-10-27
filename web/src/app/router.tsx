@@ -48,6 +48,10 @@ export const routes = [
               import("../pages/incident/IncidentPage").then((m) => ({ Component: m.IncidentPage })),
           },
           {
+            path: "llm",
+            lazy: () => import("../pages/llm/LlmPage").then((m) => ({ Component: m.LlmPage })),
+          },
+          {
             path: "explore",
             lazy: () => import("../pages/explore/ExplorePage").then((m) => ({ Component: m.ExplorePage })),
           },

@@ -35,6 +35,7 @@ parity: ## Compare against Evidently and NannyML in a separate environment
 
 fixtures: ## Rebuild the dashboard demo data, BI tables and BI reports from the engine
 	uv run python demo/build_fixtures.py --out web/public/data
+	uv run python demo/build_llm.py --out web/public/data/llm.json
 	uv run python bi/build_bi.py
 
 up: ## Run the stack in Docker: dashboard on http://localhost:8080
